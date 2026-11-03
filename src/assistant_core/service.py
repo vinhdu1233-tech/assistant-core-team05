@@ -4,7 +4,7 @@ import logging
 from time import perf_counter
 
 from assistant_core.config import Settings
-from assistant_core.errors import InvalidRequest, ProviderError
+from assistant_core.errors import ConfigError, InvalidRequest, ProviderError
 from assistant_core.knowledge import Handbook, OfficeDirectory
 from assistant_core.models import Intent, Message, Response, Source
 from assistant_core.responder import Responder, TemplateResponder
@@ -102,3 +102,27 @@ class AssistantService:
             intent=Intent.RULE,
             sources=sources,
         )
+
+def build_service(settings: Settings) -> AssistantService:
+    """Create the shared assistant service for the API."""
+    from assistant_core.responder import StubLLMResponder
+
+    if settings.llm_provider != "stub":
+        raise ConfigError(
+            "Only the stub provider is currently supported."
+        )
+
+    offices = OfficeDirectory.from_csv(
+        settings.data_dir / "offices.csv"
+    )
+
+    handbook = Handbook.from_json(
+        settings.data_dir / "handbook.json"
+    )
+
+    return AssistantService(
+        settings=settings,
+        offices=offices,
+        handbook=handbook,
+        responder=StubLLMResponder(),
+    )
