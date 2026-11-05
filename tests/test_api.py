@@ -37,10 +37,11 @@ def test_chat_validation_error(client):
     assert r.status_code == 422 and r.json()["error"]["code"] == "invalid_request"
 
 
-@pytest.mark.skip(reason="BONUS task — remove this line when you add rate limiting")
 def test_rate_limit(client):
     codes = [client.post("/v1/chat", json={"message": "hi"}).status_code for _ in range(6)]
-    assert codes[-1] == 429
+
+    assert codes[:5] == [200] * 5
+    assert codes[5] == 429
 
 
 def test_feedback_roundtrip(client):
@@ -82,3 +83,26 @@ def test_weather_stale_cache_when_upstream_fails():
     w.cache_ttl_s = 0  # force a refresh on the second call
     assert not w.current().stale
     assert w.current().stale
+
+
+def test_offices_returns_200_and_sorted(client):
+    r = client.get("/v1/offices")
+
+    assert r.status_code == 200
+
+    offices = r.json()
+    names = [office["name"] for office in offices]
+
+    assert names == sorted(names)
+
+
+def test_offices_contains_library(client):
+    r = client.get("/v1/offices")
+
+    assert r.status_code == 200
+
+    offices = r.json()
+    library = next(office for office in offices if office["name"] == "Library")
+
+    assert library["room"] == "B.201"
+    assert library["hours"] == "Mon-Sat 07:00-20:00"
