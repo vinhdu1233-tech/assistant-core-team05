@@ -81,10 +81,7 @@ def test_m4_offices_match_core_records_and_fields(settings, service):
     client = TestClient(create_app(settings=settings, service=service))
     result = client.get("/v1/offices")
     assert result.status_code == 200
-    expected = [
-        {"name": office.name, "room": office.room, "hours": office.hours}
-        for office in service.offices.all()
-    ]
+    expected = [{"name": office.name, "room": office.room, "hours": office.hours} for office in service.offices.all()]
     assert expected
     assert result.json() == expected
     assert all(set(item) == {"name", "room", "hours"} for item in result.json())
