@@ -59,6 +59,9 @@ class OfficeDirectory:
 
         return None
 
+    def all(self) -> list[Office]:
+        return sorted(self._offices, key=lambda office: office.name)
+
 
 @dataclass(frozen=True)
 class Rule:
