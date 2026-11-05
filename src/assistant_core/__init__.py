@@ -1,4 +1,3 @@
-
 """Maintainable study assistant core package."""
 
 from assistant_core.models import Message, Response

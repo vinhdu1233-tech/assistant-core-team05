@@ -7,8 +7,8 @@ Endpoints (v1): GET /health, POST /v1/chat, POST /v1/feedback, GET /v1/feedback 
 
 from __future__ import annotations
 
-import uuid
-from datetime import datetime, timezone
+import uuid  # noqa: F401
+from datetime import datetime, timezone  # noqa: F401
 
 from fastapi import Depends, FastAPI, Header, HTTPException, Request, status
 from fastapi.exceptions import RequestValidationError
@@ -16,8 +16,8 @@ from fastapi.responses import JSONResponse
 
 from assistant_api.ratelimit import RateLimiter
 from assistant_api.schemas import ChatRequest, ChatResponse, ErrorResponse, FeedbackIn, FeedbackOut, Weather
-from assistant_api.weather import ExternalServiceError, WeatherClient
-from assistant_core import AssistantService, Message, build_service
+from assistant_api.weather import ExternalServiceError, WeatherClient  # noqa: F401
+from assistant_core import AssistantService, Message, build_service  # noqa: F401
 from assistant_core.config import Settings, load_settings
 
 
@@ -30,7 +30,7 @@ def create_app(
         settings.weather_url, settings.campus_lat, settings.campus_lon, timeout_s=settings.weather_timeout_s
     )
     limiter = RateLimiter(settings.rate_limit_per_min)  # used only in the BONUS task
-    feedback_store: list[FeedbackOut] = []  # Lab 5 replaces this with a database
+    feedback_store: list[FeedbackOut] = []  # noqa: F841  # Lab 5 replaces this with a database
 
     app = FastAPI(
         title="Study Assistant API", version="1.0.0", description="Backend of the CSC10014 Smart Virtual Assistant."
@@ -57,6 +57,17 @@ def create_app(
     def health() -> dict:
         return {"status": "ok", "version": app.version}
 
+    @app.get("/v1/offices", tags=["offices"])
+    def list_offices() -> list[dict[str, str]]:
+        return [
+            {
+                "name": office.name,
+                "room": office.room,
+                "hours": office.hours,
+            }
+            for office in service.offices.all()
+        ]
+
     @app.post(
         "/v1/chat",
         response_model=ChatResponse,
@@ -64,11 +75,20 @@ def create_app(
         responses={422: {"model": ErrorResponse}, 429: {"model": ErrorResponse}},
     )
     def chat(req: ChatRequest, request: Request) -> ChatResponse:
-        # BONUS: rate limiting (see tutorial Part F). Leave it for later.
-        # TODO T1 (2 lines):
-        #   1. resp = service.handle(Message(text=req.message, session_id=req.session_id))
-        #   2. return ChatResponse(**resp.model_dump(), request_id=uuid.uuid4().hex[:12])
-        raise NotImplementedError("T1")
+        """Process a chat request with per-client rate limiting."""
+        client_ip = request.client.host if request.client else "unknown"
+
+        if not limiter.allow(client_ip):
+            raise HTTPException(
+                status.HTTP_429_TOO_MANY_REQUESTS,
+                "Too many requests",
+            )
+
+        resp = service.handle(Message(text=req.message, session_id=req.session_id))
+        return ChatResponse(
+            **resp.model_dump(),
+            request_id=uuid.uuid4().hex[:12],
+        )
 
     @app.post("/v1/feedback", response_model=FeedbackOut, status_code=201, tags=["feedback"])
     def add_feedback(fb: FeedbackIn) -> FeedbackOut:
@@ -83,9 +103,9 @@ def create_app(
 
     @app.get("/v1/weather", response_model=Weather, tags=["external"], responses={503: {"model": ErrorResponse}})
     def campus_weather() -> Weather:
-        # TODO T4 (4 lines): call weather.current() inside try/except.
-        #   If ExternalServiceError happens, raise HTTPException(status.HTTP_503_SERVICE_UNAVAILABLE,
-        #   "Weather service unavailable") from None
-        raise NotImplementedError("T4")
+        try:
+            return weather.current()
+        except ExternalServiceError:
+            raise HTTPException(status.HTTP_503_SERVICE_UNAVAILABLE, "Weather service unavailable") from None
 
     return app
