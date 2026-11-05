@@ -59,8 +59,21 @@ def test_feedback_rejects_invalid_payload(feedback_client):
         "/v1/feedback",
         json={"request_id": "req-123", "rating": 1, "comment": "x" * 501},
     )
+    long_id = feedback_client.post(
+        "/v1/feedback",
+        json={"request_id": "r" * 65, "rating": 1},
+    )
+    missing_rating = feedback_client.post("/v1/feedback", json={"request_id": "missing-rating"})
+
     assert empty_id.status_code == 422
     assert long_comment.status_code == 422
+    assert long_id.status_code == 422
+    assert missing_rating.status_code == 422
+
+    # Invalid submissions must not consume IDs or create feedback records.
+    valid = feedback_client.post("/v1/feedback", json={"request_id": "valid", "rating": 0})
+    assert valid.status_code == 201
+    assert valid.json()["id"] == 1
 
 
 def test_feedback_store_is_isolated_per_app(settings, service):
