@@ -84,9 +84,7 @@ def create_app(
                 "Too many requests",
             )
 
-        resp = service.handle(
-            Message(text=req.message, session_id=req.session_id)
-        )
+        resp = service.handle(Message(text=req.message, session_id=req.session_id))
         return ChatResponse(
             **resp.model_dump(),
             request_id=uuid.uuid4().hex[:12],
@@ -108,8 +106,6 @@ def create_app(
         try:
             return weather.current()
         except ExternalServiceError:
-            raise HTTPException(
-                status.HTTP_503_SERVICE_UNAVAILABLE, "Weather service unavailable"
-            ) from None
+            raise HTTPException(status.HTTP_503_SERVICE_UNAVAILABLE, "Weather service unavailable") from None
 
     return app

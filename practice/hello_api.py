@@ -6,6 +6,7 @@ Then open http://127.0.0.1:8000/docs in your browser.
 
 Exercises P1–P5 are in README.md. Each one adds a few lines at the marked place.
 """
+
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 

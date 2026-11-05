@@ -103,22 +103,17 @@ class AssistantService:
             sources=sources,
         )
 
+
 def build_service(settings: Settings) -> AssistantService:
     """Create the shared assistant service for the API."""
     from assistant_core.responder import StubLLMResponder
 
     if settings.llm_provider != "stub":
-        raise ConfigError(
-            "Only the stub provider is currently supported."
-        )
+        raise ConfigError("Only the stub provider is currently supported.")
 
-    offices = OfficeDirectory.from_csv(
-        settings.data_dir / "offices.csv"
-    )
+    offices = OfficeDirectory.from_csv(settings.data_dir / "offices.csv")
 
-    handbook = Handbook.from_json(
-        settings.data_dir / "handbook.json"
-    )
+    handbook = Handbook.from_json(settings.data_dir / "handbook.json")
 
     return AssistantService(
         settings=settings,
