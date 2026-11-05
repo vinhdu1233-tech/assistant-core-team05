@@ -40,7 +40,8 @@ def test_chat_validation_error(client):
 def test_rate_limit(client):
     codes = [client.post("/v1/chat", json={"message": "hi"}).status_code for _ in range(6)]
 
-    assert codes[-1] == 429
+    assert codes[:5] == [200] * 5
+    assert codes[5] == 429
 
 
 def test_feedback_roundtrip(client):
