@@ -57,6 +57,17 @@ def create_app(
     def health() -> dict:
         return {"status": "ok", "version": app.version}
 
+    @app.get("/v1/offices", tags=["offices"])
+    def list_offices() -> list[dict[str, str]]:
+        return [
+            {
+                "name": office.name,
+                "room": office.room,
+                "hours": office.hours,
+            }
+            for office in service.offices.all()
+        ]
+
     @app.post(
         "/v1/chat",
         response_model=ChatResponse,
