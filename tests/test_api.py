@@ -36,10 +36,12 @@ def test_chat_validation_error(client):
     r = client.post("/v1/chat", json={"message": ""})
     assert r.status_code == 422 and r.json()["error"]["code"] == "invalid_request"
 
-
-@pytest.mark.skip(reason="BONUS task — remove this line when you add rate limiting")
 def test_rate_limit(client):
+    client = TestClient(client.app, raise_server_exceptions=False)
+
     codes = [client.post("/v1/chat", json={"message": "hi"}).status_code for _ in range(6)]
+
+    assert all(code != 429 for code in codes[:5])
     assert codes[-1] == 429
 
 
