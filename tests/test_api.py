@@ -36,8 +36,8 @@ def test_chat_validation_error(client):
     r = client.post("/v1/chat", json={"message": ""})
     assert r.status_code == 422 and r.json()["error"]["code"] == "invalid_request"
 
-def test_rate_limit(client):
 
+def test_rate_limit(client):
     codes = [client.post("/v1/chat", json={"message": "hi"}).status_code for _ in range(6)]
 
     assert codes[-1] == 429
