@@ -12,6 +12,7 @@ dependencies = [
     "fastapi>=0.115,<0.116",
     "httpx>=0.27,<0.28",
     "uvicorn>=0.30,<0.31",
+    "sqlmodel>=0.0.22,<0.1",
 ]
 
 [tool.setuptools.packages.find]
