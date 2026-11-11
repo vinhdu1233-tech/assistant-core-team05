@@ -12,12 +12,33 @@
 | R1 persists valid feedback | Instantiates `Feedback`, adds it, commits and refreshes, then returns the saved row |
 | DB generates feedback ID | `db.refresh(fb)` after `db.commit()`; confirmed in `test_r1_saves_all_valid_ratings_with_database_id_and_fields` |
 | R2 lists most recent first | `select(Feedback).order_by(Feedback.created_at.desc())` |
-| R2 limits results, default 100 | `limit(limit)`; tested for 0, 2, 100 and 200 |
+| R2 limits results, default 100 | `limit(limit)`; tested for 0, 1, 2, 100 and 200; verifies the 100 **newest** rather than the oldest |
+| R2 protects against negative limits | Rejects `limit < 0` with `ValueError` to prevent SQLite's `LIMIT -1` (unbounded read) |
 | Feedback can survive process restart | `test_r1_feedback_survives_reopening_file_backed_sqlite` closes the first SQLite engine, reopens the same DB file, and reads saved data |
 | Privacy | `record_interaction()` remains unchanged; tests confirm a salted session hash and no raw-message columns |
 | Lab 4 regression safety | No changes to `main.py`, `schemas.py`, `record_interaction()`, migrations, SQL exercises or teammate files |
 
 The implementation intentionally follows the official tutorial's **Part E.4–E.5** examples. Existing SQLModel models and database initialization were **not** rewritten.
+
+### Focused M1 test matrix
+
+The additional regression cases in `tests/test_lab05_feedback_m1.py` cover:
+
+| Area | Cases |
+| --- | --- |
+| Unknown feedback ID | Empty DB; DB with two existing interactions; SQL-like input; no orphan rows or consumed IDs |
+| R1 saved data | Ratings -1/0/1, optional comment, DB-generated IDs, exact request association, foreign-key relationship |
+| Multiple feedback records | Two ratings can reference one interaction, as permitted by the starter's one-to-many model |
+| Text handling | Full 32-character request ID; 500-character optional comment; Unicode and SQL-looking characters retained as data |
+| Created time | Compare persisted `created_at` with an actual UTC time window; account for SQLite's naive datetime deserialization |
+| R2 ordering | Deterministic timestamps, descending order, 0/1/2/100/200 limits, newest 100 out of 105, empty DB |
+| Negative limits | `limit=-1` / `-10` rejected instead of SQLite treating them as unlimited |
+| Transaction safety | Synthetic commit exception leaves no partial Feedback row; existing Interaction remains |
+| Restart persistence | File-backed SQLite engine disposed, recreated and data read back |
+| Privacy | Salted session ID is stored instead of raw session; schema has no raw question column |
+
+All tests use synthetic data. As required by Issue #31, **R1 relies on API validation** for ratings and comment length. The R1 repository implementation itself does not impose application-level Pydantic constraints; the SQL migration file provides a `CHECK` constraint when applied by the migration system. The test fixture using `SQLModel.metadata.create_all()` does not automatically reproduce every migration-specific constraint.
+
 
 ## How to run tests
 
@@ -66,7 +87,7 @@ Do **not** reuse this placeholder `request_id` literally. No screenshots or live
 - Persist: generated IDs, a hashed session ID, intent/topic/outcome/latency metadata, ratings and optional feedback comment.
 - Do not persist: full student questions, raw session IDs, phone numbers or user names.
 - Never commit `.env`, a real `SESSION_SALT`, API keys, or SQLite database files.
-- `Repository.add_feedback()` expects API-layer Pydantic validation for ratings `-1, 0, 1` and comment length; this matches the starter contract. Database migration's SQL `CHECK` constraint provides an additional rating safeguard.
+- `Repository.add_feedback()` expects API-layer Pydantic validation for ratings `-1, 0, 1` and comment length; this matches the starter contract. The migration's SQL `CHECK` constraint provides an additional safeguard **only on databases where the migration has been applied**.
 
 ## Team ownership / integration
 
