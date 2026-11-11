@@ -106,12 +106,23 @@ def test_r2_orders_by_created_at_desc_and_respects_limit(feedback_repo):
 
 
 def test_r2_default_limit_is_100(feedback_repo):
-    repo, _ = feedback_repo
+    repo, engine = feedback_repo
     record(repo, "answer-01")
     for _ in range(105):
         assert repo.add_feedback("answer-01", 1, None) is not None
 
-    assert len(repo.list_feedback()) == 100
+    # Set known, strictly increasing times; a LENGTH-only check could pass
+    # even if LIMIT returned the oldest 100 instead of the newest 100.
+    start = datetime(2026, 1, 1, tzinfo=timezone.utc)
+    with Session(engine) as db:
+        feedback = db.exec(select(Feedback)).all()
+        for item in feedback:
+            item.created_at = start + timedelta(seconds=item.id)
+            db.add(item)
+        db.commit()
+
+    assert [item.id for item in repo.list_feedback()] == list(range(105, 5, -1))
+    assert [item.id for item in repo.list_feedback(limit=1)] == [105]
     assert len(repo.list_feedback(limit=200)) == 105
 
 
@@ -159,3 +170,128 @@ def test_r1_does_not_store_raw_session_or_message(feedback_repo):
         assert "message" not in interaction_columns
         assert "question" not in interaction_columns
         assert "raw_session" not in interaction_columns
+
+def test_r1_missing_id_never_matches_another_interaction(feedback_repo):
+    repo, engine = feedback_repo
+    record(repo, "known-request-1")
+    record(repo, "known-request-2")
+
+    # Exact matching matters: even an SQL-looking request ID is only data.
+    for unknown in ("known-request", "not-an-id", "' OR 1=1 --"):
+        assert repo.add_feedback(unknown, 1, "should not be saved") is None
+
+    assert repo.list_feedback() == []
+    with Session(engine) as db:
+        assert len(db.exec(select(Interaction)).all()) == 2
+        assert db.exec(select(Feedback)).all() == []
+
+    saved = repo.add_feedback("known-request-2", 1, "valid")
+    assert saved is not None
+    assert saved.id == 1  # rejected attempts did not consume an ID
+
+
+def test_r1_does_not_change_existing_feedback_on_unknown_id(feedback_repo):
+    repo, engine = feedback_repo
+    record(repo, "existing-1")
+    record(repo, "existing-2")
+    original = repo.add_feedback("existing-1", 1, "keep this feedback")
+    assert original is not None
+
+    assert repo.add_feedback("invalid", -1, "discard this feedback") is None
+    next_item = repo.add_feedback("existing-2", 0, None)
+    assert next_item is not None
+    assert next_item.id == original.id + 1
+
+    with Session(engine) as db:
+        items = db.exec(select(Feedback).order_by(Feedback.id)).all()
+        assert [(item.request_id, item.rating, item.comment) for item in items] == [
+            ("existing-1", 1, "keep this feedback"),
+            ("existing-2", 0, None),
+        ]
+
+
+def test_r1_links_feedback_to_the_correct_interaction(feedback_repo):
+    repo, engine = feedback_repo
+    record(repo, "request-a", raw_session="session-a")
+    record(repo, "request-b", raw_session="session-b")
+
+    saved = repo.add_feedback("request-b", -1, "incorrect answer")
+    assert saved is not None
+    with Session(engine) as db:
+        item = db.exec(select(Feedback)).one()
+        assert item.request_id == "request-b"
+        assert item.interaction is not None
+        assert item.interaction.request_id == "request-b"
+        assert item.interaction.session_id == hash_session("session-b", "only-for-tests")
+        assert len(db.exec(select(Interaction)).all()) == 2
+
+
+def test_r1_two_feedback_entries_for_same_answer_are_distinct(feedback_repo):
+    repo, engine = feedback_repo
+    record(repo, "answer-with-two-ratings")
+
+    first = repo.add_feedback("answer-with-two-ratings", 1, None)
+    second = repo.add_feedback("answer-with-two-ratings", -1, "needs revision")
+    assert first is not None and second is not None
+    assert first.id != second.id
+
+    with Session(engine) as db:
+        rows = db.exec(select(Feedback).order_by(Feedback.id)).all()
+        assert len(rows) == 2
+        assert [row.rating for row in rows] == [1, -1]
+        assert {row.request_id for row in rows} == {"answer-with-two-ratings"}
+
+
+def test_r1_persists_unicode_quotes_and_maximum_comment_length(feedback_repo):
+    repo, engine = feedback_repo
+    request_id = "r" * 32
+    comment = "Ổn ✅ It's clear; ' OR 1=1 -- " + "x" * (500 - len("Ổn ✅ It's clear; ' OR 1=1 -- "))
+    assert len(comment) == 500
+    record(repo, request_id)
+
+    saved = repo.add_feedback(request_id, 0, comment)
+    assert saved is not None
+    assert saved.comment == comment
+
+    with Session(engine) as db:
+        stored = db.exec(select(Feedback)).one()
+        assert stored.request_id == request_id
+        assert stored.comment == comment
+
+
+def test_r1_feedback_timestamp_is_created_near_the_insert_time(feedback_repo):
+    repo, engine = feedback_repo
+    record(repo, "timestamp-check")
+
+    before = datetime.now(timezone.utc) - timedelta(seconds=2)
+    saved = repo.add_feedback("timestamp-check", 1, None)
+    after = datetime.now(timezone.utc) + timedelta(seconds=2)
+    assert saved is not None
+
+    # SQLite may deserialize timezone-aware timestamps as naive datetimes.
+    # The supplied utcnow() factory nevertheless creates UTC values.
+    stored_time = saved.created_at
+    if stored_time.tzinfo is None:
+        stored_time = stored_time.replace(tzinfo=timezone.utc)
+    assert before <= stored_time <= after
+
+    with Session(engine) as db:
+        persisted = db.exec(select(Feedback)).one()
+        assert persisted.created_at == saved.created_at
+
+
+def test_r2_empty_result_and_read_after_write(feedback_repo):
+    repo, _ = feedback_repo
+    assert repo.list_feedback() == []
+    assert repo.list_feedback(limit=0) == []
+    assert repo.list_feedback(limit=15) == []
+
+    record(repo, "first-request")
+    assert repo.add_feedback("first-request", 1, None) is not None
+    assert len(repo.list_feedback()) == 1
+
+    record(repo, "second-request")
+    assert repo.add_feedback("second-request", -1, None) is not None
+    results = repo.list_feedback(limit=10)
+    assert len(results) == 2
+    assert all(isinstance(item, Feedback) for item in results)
