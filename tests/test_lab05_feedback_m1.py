@@ -295,3 +295,34 @@ def test_r2_empty_result_and_read_after_write(feedback_repo):
     results = repo.list_feedback(limit=10)
     assert len(results) == 2
     assert all(isinstance(item, Feedback) for item in results)
+
+@pytest.mark.parametrize("invalid_limit", [-1, -10])
+def test_r2_rejects_negative_limits_without_exposing_all_rows(feedback_repo, invalid_limit):
+    repo, _ = feedback_repo
+    record(repo, "bounded-result")
+    assert repo.add_feedback("bounded-result", 1, None) is not None
+
+    with pytest.raises(ValueError, match="limit must be non-negative"):
+        repo.list_feedback(limit=invalid_limit)
+    assert len(repo.list_feedback(limit=1)) == 1
+
+
+def test_r1_failed_commit_does_not_leave_partial_feedback(feedback_repo, monkeypatch):
+    repo, engine = feedback_repo
+    record(repo, "commit-failure")
+    with Session(engine) as db:
+        assert len(db.exec(select(Interaction)).all()) == 1
+
+    def fail_commit(_session):
+        raise RuntimeError("simulated storage failure")
+
+    with monkeypatch.context() as patch:
+        patch.setattr(Session, "commit", fail_commit)
+        with pytest.raises(RuntimeError, match="simulated storage failure"):
+            repo.add_feedback("commit-failure", 1, "do not save")
+
+    # The repository uses a session context, so an exception must not
+    # accidentally commit a partially created feedback row.
+    with Session(engine) as db:
+        assert db.exec(select(Feedback)).all() == []
+        assert len(db.exec(select(Interaction)).all()) == 1
