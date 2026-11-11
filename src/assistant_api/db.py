@@ -110,6 +110,8 @@ class Repository:
             return fb
 
     def list_feedback(self, limit: int = 100) -> list[Feedback]:
+        if limit < 0:
+            raise ValueError("Feedback limit must be non-negative")
         with Session(self.engine) as db:
             return list(db.exec(select(Feedback).order_by(Feedback.created_at.desc()).limit(limit)))
 
