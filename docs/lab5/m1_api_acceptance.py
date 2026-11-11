@@ -85,9 +85,7 @@ def test_http_feedback_validation_and_newest_first(tmp_path):
         first_request = create_real_interaction(client, session_id="s-1")
         second_request = create_real_interaction(client, session_id="s-2")
 
-        invalid_rating = client.post(
-            "/v1/feedback", json={"request_id": first_request, "rating": 5}
-        )
+        invalid_rating = client.post("/v1/feedback", json={"request_id": first_request, "rating": 5})
         oversized_comment = client.post(
             "/v1/feedback",
             json={"request_id": first_request, "rating": 0, "comment": "x" * 501},
@@ -95,12 +93,8 @@ def test_http_feedback_validation_and_newest_first(tmp_path):
         assert invalid_rating.status_code == 422
         assert oversized_comment.status_code == 422
 
-        first = client.post(
-            "/v1/feedback", json={"request_id": first_request, "rating": 1}
-        )
-        second = client.post(
-            "/v1/feedback", json={"request_id": second_request, "rating": -1}
-        )
+        first = client.post("/v1/feedback", json={"request_id": first_request, "rating": 1})
+        second = client.post("/v1/feedback", json={"request_id": second_request, "rating": -1})
         assert first.status_code == second.status_code == 201
 
         result = client.get("/v1/feedback", headers={"X-API-Key": ADMIN_KEY})
