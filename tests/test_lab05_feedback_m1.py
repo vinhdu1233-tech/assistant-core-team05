@@ -171,6 +171,7 @@ def test_r1_does_not_store_raw_session_or_message(feedback_repo):
         assert "question" not in interaction_columns
         assert "raw_session" not in interaction_columns
 
+
 def test_r1_missing_id_never_matches_another_interaction(feedback_repo):
     repo, engine = feedback_repo
     record(repo, "known-request-1")
@@ -296,6 +297,7 @@ def test_r2_empty_result_and_read_after_write(feedback_repo):
     assert len(results) == 2
     assert all(isinstance(item, Feedback) for item in results)
 
+
 @pytest.mark.parametrize("invalid_limit", [-1, -10])
 def test_r2_rejects_negative_limits_without_exposing_all_rows(feedback_repo, invalid_limit):
     repo, _ = feedback_repo
@@ -326,17 +328,3 @@ def test_r1_failed_commit_does_not_leave_partial_feedback(feedback_repo, monkeyp
     with Session(engine) as db:
         assert db.exec(select(Feedback)).all() == []
         assert len(db.exec(select(Interaction)).all()) == 1
-
-
-def test_temporary_ruff_format_preview():
-    """TEMP diagnostic; remove after retrieving GitHub Actions formatter diff."""
-    import subprocess
-    import sys
-
-    result = subprocess.run(
-        [sys.executable, "-m", "ruff", "format", "--diff", "tests/test_lab05_feedback_m1.py"],
-        capture_output=True,
-        text=True,
-        check=False,
-    )
-    pytest.fail("RUFF_FORMAT_DIFF\\n" + result.stdout + result.stderr)
