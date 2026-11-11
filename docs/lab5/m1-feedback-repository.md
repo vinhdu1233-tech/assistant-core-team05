@@ -53,7 +53,35 @@ python -m ruff check .
 python -m ruff format --check .
 ```
 
-The added tests use in-memory SQLite except the persistence test, which uses a temporary file provided by pytest's `tmp_path`. They do not use real student information, live network calls, or credentials.
+The automatically collected M1 repository tests use in-memory SQLite except the persistence test, which uses a temporary file provided by pytest's `tmp_path`. They do not use real student information, live network calls, or credentials. The separately runnable HTTP acceptance tests use a temporary file too.
+
+### Prepared opt-in HTTP tests (run after M3 merges its integration)
+
+The file `docs/lab5/m1_api_acceptance.py` is a **real pytest module** but is
+intentionally not named `test_*.py`: the initial Lab 5 starter still uses an
+in-memory feedback list, so the normal test suite should **not** collect an
+integration test whose required implementation is owned by M3.
+
+After M3 completes FastAPI database wiring, run from the repository root:
+
+```bash
+python -m pytest -q docs/lab5/m1_api_acceptance.py
+```
+
+It checks:
+
+1. Chat creates a genuine persisted `request_id`, feedback returns 201 for it,
+   and a nonexistent `request_id` returns 404 without creating an orphan row.
+2. Missing or invalid `X-API-Key` returns 401; an authorized GET returns saved feedback.
+3. A fresh FastAPI instance pointed to the **same test SQLite file** still lists
+   feedback after the previous instance closes.
+4. Invalid ratings and comments over 500 characters return 422, and authorized
+   feedback listing is newest first.
+5. Stored interaction rows contain metadata, not the raw question text, and
+   stored session IDs are hashed.
+
+These HTTP tests are **prepared, not yet passed**. Do not claim their result until
+M3's integration exists and the explicit command succeeds.
 
 ## Cross-member HTTP acceptance (M3 integration dependency)
 
@@ -87,6 +115,7 @@ Do **not** reuse this placeholder `request_id` literally. No screenshots or live
 - Persist: generated IDs, a hashed session ID, intent/topic/outcome/latency metadata, ratings and optional feedback comment.
 - Do not persist: full student questions, raw session IDs, phone numbers or user names.
 - Never commit `.env`, a real `SESSION_SALT`, API keys, or SQLite database files.
+- The optional free-text `comment` itself could contain personal information supplied by a user. This lab preserves it according to the given contract; a production app should add appropriate notice, moderation, retention, and access controls.
 - `Repository.add_feedback()` expects API-layer Pydantic validation for ratings `-1, 0, 1` and comment length; this matches the starter contract. The migration's SQL `CHECK` constraint provides an additional safeguard **only on databases where the migration has been applied**.
 
 ## Team ownership / integration
