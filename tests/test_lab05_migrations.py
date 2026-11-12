@@ -1,6 +1,7 @@
 import sqlite3
 import subprocess
 import sys
+from contextlib import closing
 from pathlib import Path
 
 import pytest
@@ -103,25 +104,28 @@ def test_data_persists_after_reconnecting(tmp_path):
     db_path = tmp_path / "test.db"
     run_migrations(db_path)
 
-    with sqlite3.connect(db_path) as con:
-        con.execute(
-            """
-            INSERT INTO chat_session (id, channel, created_at)
-            VALUES (?, ?, ?)
-            """,
-            ("m4-session", "web", "2026-11-12"),
-        )
-        con.execute(
-            """
-            INSERT INTO interaction
-                (request_id, session_id, intent, created_at)
-            VALUES (?, ?, ?, ?)
-            """,
-            ("m4-request", "m4-session", "fee", "2026-11-12"),
-        )
+    # Open the first connection and insert data.
+    with closing(sqlite3.connect(db_path)) as con:
+        with con:
+            con.execute(
+                """
+                INSERT INTO chat_session (id, channel, created_at)
+                VALUES (?, ?, ?)
+                """,
+                ("m4-session", "web", "2026-11-12"),
+            )
+            con.execute(
+                """
+                INSERT INTO interaction
+                    (request_id, session_id, intent, created_at)
+                VALUES (?, ?, ?, ?)
+                """,
+                ("m4-request", "m4-session", "fee", "2026-11-12"),
+            )
 
-    # A new connection verifies that committed data persists.
-    with sqlite3.connect(db_path) as con:
+    # The first connection is now closed.
+    # Open a new connection to verify persistence.
+    with closing(sqlite3.connect(db_path)) as con:
         session = con.execute(
             "SELECT id, channel FROM chat_session WHERE id = ?",
             ("m4-session",),
@@ -138,3 +142,39 @@ def test_data_persists_after_reconnecting(tmp_path):
 
     assert session == ("m4-session", "web")
     assert interaction == ("m4-request", "m4-session", "fee")
+
+
+def test_feedback_rating_constraint_rejects_invalid_value(tmp_path):
+    db_path = tmp_path / "test.db"
+    run_migrations(db_path)
+
+    with closing(sqlite3.connect(db_path)) as con:
+        con.execute("PRAGMA foreign_keys = ON")
+
+        # Create valid parent records first.
+        with con:
+            con.execute(
+                """
+                INSERT INTO chat_session (id, channel, created_at)
+                VALUES (?, ?, ?)
+                """,
+                ("session-1", "web", "2026-11-12"),
+            )
+            con.execute(
+                """
+                INSERT INTO interaction
+                    (request_id, session_id, intent, created_at)
+                VALUES (?, ?, ?, ?)
+                """,
+                ("request-1", "session-1", "fee", "2026-11-12"),
+            )
+
+        # Rating 5 violates CHECK (rating IN (-1, 0, 1)).
+        with pytest.raises(sqlite3.IntegrityError):
+            con.execute(
+                """
+                INSERT INTO feedback (request_id, rating, created_at)
+                VALUES (?, ?, ?)
+                """,
+                ("request-1", 5, "2026-11-12"),
+            )
