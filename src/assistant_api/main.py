@@ -21,6 +21,7 @@ from assistant_api.schemas import ChatRequest, ChatResponse, ErrorResponse, Feed
 from assistant_api.weather import ExternalServiceError, WeatherClient  # noqa: F401
 from assistant_core import AssistantService, Message, build_service  # noqa: F401
 from assistant_core.config import Settings, load_settings
+from assistant_core.models import Intent
 
 
 def create_app(
@@ -98,7 +99,7 @@ def create_app(
             request_id=request_id,
             intent=resp.intent.value if hasattr(resp.intent, "value") else str(resp.intent),
             topic=None,
-            resolved=not resp.degraded,
+            resolved=resp.intent != Intent.UNKNOWN,
             degraded=resp.degraded,
             latency_ms=latency_ms,
         )

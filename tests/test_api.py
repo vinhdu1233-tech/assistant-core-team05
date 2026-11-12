@@ -1,7 +1,9 @@
 import httpx
 import pytest
 from fastapi.testclient import TestClient
+from sqlmodel import Session, select
 
+from assistant_api.db import Interaction, make_engine
 from assistant_api.main import create_app
 from assistant_api.weather import WeatherClient
 
@@ -30,6 +32,40 @@ def test_chat_fee(client):
     assert r.status_code == 200
     body = r.json()
     assert body["intent"] == "fee" and "9,450,000" in body["answer"] and body["request_id"]
+
+
+def test_unknown_intent_is_unresolved(settings, service, tmp_path):
+    db_path = tmp_path / "unknown_intent.db"
+    database_url = f"sqlite:///{db_path.as_posix()}"
+
+    test_settings = settings.model_copy(update={"database_url": database_url})
+
+    app = create_app(settings=test_settings, service=service)
+    client = TestClient(app)
+
+    response = client.post(
+        "/v1/chat",
+        json={
+            "message": "unrecognized question xyz987",
+            "session_id": "unknown-test",
+        },
+    )
+
+    assert response.status_code == 200
+
+    body = response.json()
+    assert body["intent"] == "unknown"
+
+    request_id = body["request_id"]
+
+    engine = make_engine(database_url)
+
+    with Session(engine) as db:
+        interaction = db.exec(select(Interaction).where(Interaction.request_id == request_id)).one()
+
+    assert interaction.intent == "unknown"
+    assert interaction.resolved is False
+    assert interaction.degraded is False
 
 
 def test_chat_validation_error(client):
