@@ -103,17 +103,17 @@ class Repository:
             exists = db.exec(select(Interaction).where(Interaction.request_id == request_id)).first()
             if exists is None:
                 return None  # the API turns this into 404
-            # TODO R1 (4 lines) — follow record_interaction above:
-            #   fb = Feedback(request_id=request_id, rating=rating, comment=comment)
-            #   db.add(fb); db.commit(); db.refresh(fb)   # refresh loads the new id from the database
-            #   return fb
-            raise NotImplementedError("R1")
+            fb = Feedback(request_id=request_id, rating=rating, comment=comment)
+            db.add(fb)
+            db.commit()
+            db.refresh(fb)
+            return fb
 
     def list_feedback(self, limit: int = 100) -> list[Feedback]:
-        with Session(self.engine) as db:  # noqa: F841
-            # TODO R2 (1 line)
-            # M1 will implement R2 in Issue #31.
-            raise NotImplementedError("R2")
+        if limit < 0:
+            raise ValueError("Feedback limit must be non-negative")
+        with Session(self.engine) as db:
+            return list(db.exec(select(Feedback).order_by(Feedback.created_at.desc()).limit(limit)))
 
     def intent_stats(self) -> list[dict]:
         """Requests, average latency and unresolved rate per intent."""
