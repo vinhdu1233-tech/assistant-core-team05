@@ -1,7 +1,9 @@
 import httpx
 import pytest
 from fastapi.testclient import TestClient
+from sqlmodel import Session, select
 
+from assistant_api.db import Interaction, make_engine
 from assistant_api.main import create_app
 from assistant_api.weather import WeatherClient
 
@@ -32,6 +34,40 @@ def test_chat_fee(client):
     assert body["intent"] == "fee" and "9,450,000" in body["answer"] and body["request_id"]
 
 
+def test_unknown_intent_is_unresolved(settings, service, tmp_path):
+    db_path = tmp_path / "unknown_intent.db"
+    database_url = f"sqlite:///{db_path.as_posix()}"
+
+    test_settings = settings.model_copy(update={"database_url": database_url})
+
+    app = create_app(settings=test_settings, service=service)
+    client = TestClient(app)
+
+    response = client.post(
+        "/v1/chat",
+        json={
+            "message": "unrecognized question xyz987",
+            "session_id": "unknown-test",
+        },
+    )
+
+    assert response.status_code == 200
+
+    body = response.json()
+    assert body["intent"] == "unknown"
+
+    request_id = body["request_id"]
+
+    engine = make_engine(database_url)
+
+    with Session(engine) as db:
+        interaction = db.exec(select(Interaction).where(Interaction.request_id == request_id)).one()
+
+    assert interaction.intent == "unknown"
+    assert interaction.resolved is False
+    assert interaction.degraded is False
+
+
 def test_chat_validation_error(client):
     r = client.post("/v1/chat", json={"message": ""})
     assert r.status_code == 422 and r.json()["error"]["code"] == "invalid_request"
@@ -45,11 +81,28 @@ def test_rate_limit(client):
 
 
 def test_feedback_roundtrip(client):
-    r = client.post("/v1/feedback", json={"request_id": "abc123", "rating": 1})
-    assert r.status_code == 201 and r.json()["id"] == 1
+    chat = client.post(
+        "/v1/chat",
+        json={"message": "tuition for 18 credits"},
+    )
+    assert chat.status_code == 200
+    request_id = chat.json()["request_id"]
+
+    r = client.post(
+        "/v1/feedback",
+        json={"request_id": request_id, "rating": 1},
+    )
+    assert r.status_code == 201
+    assert r.json()["request_id"] == request_id
+
     assert client.get("/v1/feedback").status_code == 401
-    listed = client.get("/v1/feedback", headers={"X-API-Key": "secret-admin"})
-    assert listed.status_code == 200 and len(listed.json()) == 1
+
+    listed = client.get(
+        "/v1/feedback",
+        headers={"X-API-Key": "secret-admin"},
+    )
+    assert listed.status_code == 200
+    assert any(item["request_id"] == request_id for item in listed.json())
 
 
 def test_feedback_rating_out_of_range(client):
