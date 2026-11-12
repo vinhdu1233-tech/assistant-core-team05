@@ -45,11 +45,28 @@ def test_rate_limit(client):
 
 
 def test_feedback_roundtrip(client):
-    r = client.post("/v1/feedback", json={"request_id": "abc123", "rating": 1})
-    assert r.status_code == 201 and r.json()["id"] == 1
+    chat = client.post(
+        "/v1/chat",
+        json={"message": "tuition for 18 credits"},
+    )
+    assert chat.status_code == 200
+    request_id = chat.json()["request_id"]
+
+    r = client.post(
+        "/v1/feedback",
+        json={"request_id": request_id, "rating": 1},
+    )
+    assert r.status_code == 201
+    assert r.json()["request_id"] == request_id
+
     assert client.get("/v1/feedback").status_code == 401
-    listed = client.get("/v1/feedback", headers={"X-API-Key": "secret-admin"})
-    assert listed.status_code == 200 and len(listed.json()) == 1
+
+    listed = client.get(
+        "/v1/feedback",
+        headers={"X-API-Key": "secret-admin"},
+    )
+    assert listed.status_code == 200
+    assert any(item["request_id"] == request_id for item in listed.json())
 
 
 def test_feedback_rating_out_of_range(client):
