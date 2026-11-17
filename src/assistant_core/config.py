@@ -70,10 +70,12 @@ def load_settings(env_file: str | None = ".env") -> Settings:
     except (ValueError, ValidationError):
         raise ConfigError("Invalid environment configuration") from None
 
-    if settings.llm_provider not in {"stub", "template", "ollama", "openai"}:
+    # Preserve the legacy "remote" configuration accepted by Lab 05 tests.
+    # The application does not instantiate a remote adapter without an explicit provider.
+    if settings.llm_provider not in {"stub", "template", "ollama", "openai", "remote"}:
         raise ConfigError("Unsupported LLM provider")
-    if settings.llm_provider == "openai" and not settings.llm_api_key:
-        raise ConfigError("LLM_API_KEY is required for the openai provider")
+    if settings.llm_provider in {"openai", "remote"} and not settings.llm_api_key:
+        raise ConfigError("LLM_API_KEY is required for the remote/openai provider")
     if settings.retrieval_kind not in {"bm25", "tfidf", "hybrid"}:
         raise ConfigError("Invalid retrieval index kind")
 
