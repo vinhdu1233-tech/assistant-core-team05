@@ -33,7 +33,9 @@ jobs:
         run: python -m pytest -q
 
       - name: Check code with Ruff
+        if: always()
         run: python -m ruff check .
 
       - name: Check formatting with Ruff
+        if: always()
         run: python -m ruff format --check .
