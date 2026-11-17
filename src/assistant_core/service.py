@@ -4,17 +4,17 @@ import logging
 from time import perf_counter
 
 from assistant_core.config import Settings
+from assistant_core.errors import ConfigError, InvalidRequest, ProviderError
 from assistant_core.guard import PRIVATE_REPLY, is_private_request
+from assistant_core.knowledge import Handbook, OfficeDirectory
 from assistant_core.llm import make_llm
+from assistant_core.models import Intent, Message, Response, Source
 from assistant_core.rag.answerer import RagAnswerer
 from assistant_core.rag.chunker import load_folder
 from assistant_core.rag.index import make_index
-from assistant_core.errors import ConfigError, InvalidRequest, ProviderError
-from assistant_core.knowledge import Handbook, OfficeDirectory
-from assistant_core.models import Intent, Message, Response, Source
 from assistant_core.responder import Responder, TemplateResponder
 from assistant_core.router import route
-from assistant_core.tools import parse_credits, tuition
+from assistant_core.tools import parse_credits, run_tool_call, tuition
 
 log = logging.getLogger("assistant_core")
 
@@ -137,7 +137,18 @@ def build_service(settings: Settings) -> AssistantService:
                 settings.llm_api_key,
                 settings.llm_timeout_s,
             )
-        rag = RagAnswerer(index, llm, settings.retrieval_min_score, prompt_version=settings.prompt_version)
+        def tool_runner(raw: str) -> str | None:
+            return run_tool_call(
+                raw, settings.credit_rate_vnd, settings.retake_multiplier, settings.max_credits
+            )
+
+        rag = RagAnswerer(
+            index,
+            llm,
+            settings.retrieval_min_score,
+            prompt_version=settings.prompt_version,
+            tool_runner=tool_runner,
+        )
 
     return AssistantService(
         settings=settings,
