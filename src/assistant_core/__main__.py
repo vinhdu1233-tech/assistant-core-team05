@@ -5,11 +5,11 @@ import sys
 
 from pydantic import ValidationError
 
+from assistant_core import service as service_module
 from assistant_core.config import load_settings
 from assistant_core.errors import ConfigError, DataError
 from assistant_core.logging_setup import setup_logging
 from assistant_core.models import Message
-from assistant_core import service as service_module
 
 
 def build_service() -> service_module.AssistantService:
