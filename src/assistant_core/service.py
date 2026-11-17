@@ -137,10 +137,9 @@ def build_service(settings: Settings) -> AssistantService:
                 settings.llm_api_key,
                 settings.llm_timeout_s,
             )
+
         def tool_runner(raw: str) -> str | None:
-            return run_tool_call(
-                raw, settings.credit_rate_vnd, settings.retake_multiplier, settings.max_credits
-            )
+            return run_tool_call(raw, settings.credit_rate_vnd, settings.retake_multiplier, settings.max_credits)
 
         rag = RagAnswerer(
             index,

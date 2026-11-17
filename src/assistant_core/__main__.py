@@ -9,17 +9,17 @@ from assistant_core.config import load_settings
 from assistant_core.errors import ConfigError, DataError
 from assistant_core.logging_setup import setup_logging
 from assistant_core.models import Message
-from assistant_core.service import AssistantService, build_service as build_app_service
+from assistant_core import service as service_module
 
 
-def build_service() -> AssistantService:
+def build_service() -> service_module.AssistantService:
     """Wire the Lab 6-enabled service while preserving the team's CLI interface."""
     settings = load_settings()
     setup_logging(settings.log_level)
-    return build_app_service(settings)
+    return service_module.build_service(settings)
 
 
-def answer_once(service: AssistantService, text: str) -> int:
+def answer_once(service: service_module.AssistantService, text: str) -> int:
     """Print only the answer to stdout; diagnostics go to stderr."""
     try:
         message = Message(text=text)

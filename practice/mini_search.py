@@ -2,6 +2,7 @@
 
 No AI here — just dictionaries, sets and sorting (DSA!). Run the tests:  pytest -q test_mini_search.py
 """
+
 import re
 
 DOCS = {
@@ -10,7 +11,26 @@ DOCS = {
     "D3": "A lost student card can be replaced at Student Affairs in room I.102.",
     "D4": "Students may borrow up to 5 books from the library for 14 days.",
 }
-STOP = {"a", "an", "the", "at", "of", "for", "to", "in", "can", "be", "is", "my", "i", "may", "with", "and", "up", "from"}
+STOP = {
+    "a",
+    "an",
+    "the",
+    "at",
+    "of",
+    "for",
+    "to",
+    "in",
+    "can",
+    "be",
+    "is",
+    "my",
+    "i",
+    "may",
+    "with",
+    "and",
+    "up",
+    "from",
+}
 
 
 def tokenize(text: str) -> list[str]:
