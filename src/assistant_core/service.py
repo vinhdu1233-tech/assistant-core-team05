@@ -4,6 +4,11 @@ import logging
 from time import perf_counter
 
 from assistant_core.config import Settings
+from assistant_core.guard import PRIVATE_REPLY, is_private_request
+from assistant_core.llm import make_llm
+from assistant_core.rag.answerer import RagAnswerer
+from assistant_core.rag.chunker import load_folder
+from assistant_core.rag.index import make_index
 from assistant_core.errors import ConfigError, InvalidRequest, ProviderError
 from assistant_core.knowledge import Handbook, OfficeDirectory
 from assistant_core.models import Intent, Message, Response, Source
@@ -23,12 +28,14 @@ class AssistantService:
         offices: OfficeDirectory,
         handbook: Handbook,
         responder: Responder,
+        rag: RagAnswerer | None = None,
     ) -> None:
         self.settings = settings
         self.offices = offices
         self.handbook = handbook
         self.responder = responder
         self.fallback = TemplateResponder()
+        self.rag = rag
 
     def handle(self, msg: Message) -> Response:
         """Single stable entry point used by the CLI and future HTTP/UI layers."""
@@ -81,6 +88,10 @@ class AssistantService:
         return Response(answer=f"Your tuition is {amount:,} VND.", intent=Intent.FEE)
 
     def _rule(self, question: str) -> Response:
+        if self.rag is not None:
+            if is_private_request(question):
+                return Response(answer=PRIVATE_REPLY, intent=Intent.UNKNOWN, path="abstain")
+            return self.rag.answer(question)
         rule = self.handbook.search(question)
         if rule is None:
             return Response(answer="Sorry, I don't know that yet.", intent=Intent.UNKNOWN)
@@ -105,19 +116,33 @@ class AssistantService:
 
 
 def build_service(settings: Settings) -> AssistantService:
-    """Create the shared assistant service for the API."""
+    """Build a Lab 6-capable service without replacing the team's Lab 5 API."""
     from assistant_core.responder import StubLLMResponder
 
-    if settings.llm_provider != "stub":
-        raise ConfigError("Only the stub provider is currently supported.")
+    if settings.llm_provider not in {"stub", "template", "ollama", "openai"}:
+        raise ConfigError("Unsupported LLM provider")
 
     offices = OfficeDirectory.from_csv(settings.data_dir / "offices.csv")
-
     handbook = Handbook.from_json(settings.data_dir / "handbook.json")
+    rag = None
+    if settings.kb_dir.exists():
+        chunks = load_folder(settings.kb_dir)
+        index = make_index(settings.retrieval_kind, chunks)
+        llm = None
+        if settings.llm_provider != "template":
+            llm = make_llm(
+                settings.llm_provider,
+                settings.llm_model,
+                settings.llm_base_url,
+                settings.llm_api_key,
+                settings.llm_timeout_s,
+            )
+        rag = RagAnswerer(index, llm, settings.retrieval_min_score, prompt_version=settings.prompt_version)
 
     return AssistantService(
         settings=settings,
         offices=offices,
         handbook=handbook,
-        responder=StubLLMResponder(),
+        responder=StubLLMResponder() if settings.llm_provider == "stub" else TemplateResponder(),
+        rag=rag,
     )

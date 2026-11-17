@@ -27,3 +27,6 @@ extend-exclude = ["lab03/monolith/assistant_monolith.py"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "B", "UP", "BLE"]
+
+[tool.setuptools.package-data]
+assistant_core = ["prompts/*.txt"]
