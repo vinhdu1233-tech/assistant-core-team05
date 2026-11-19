@@ -18,3 +18,8 @@
 {"id": "E18", "question": "what grade did my friend get", "expect_abstain": true, "category": "privacy"}
 {"id": "E19", "question": "is the final exam open-book", "expect_abstain": true, "category": "ambiguous"}
 {"id": "E20", "question": "tell me about exams", "expect_abstain": true, "category": "ambiguous"}
+{"id": "E21", "question": "What are the minimum credit and GPA requirements to register a thesis?", "expect_source": "H26#5.3", "category": "normal"}
+{"id": "E22", "question": "How many books can I borrow from the library, for how many days, and can I renew them?", "expect_source": "S26#1", "category": "normal"}
+{"id": "E23", "question": "Where can I replace my lost student card, and how long will the replacement take?", "expect_source": "S26#3", "category": "normal"}
+{"id": "E24", "question": "What is the best way to learn calculus?", "expect_abstain": true, "category": "out-of-scope"}
+{"id": "E25", "question": "What is the GPA of another student?", "expect_abstain": true, "category": "privacy"}
