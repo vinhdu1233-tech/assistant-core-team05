@@ -40,26 +40,12 @@ class AssistantService:
     def handle(self, msg: Message) -> Response:
         """Single stable entry point used by the CLI and future HTTP/UI layers."""
         started = perf_counter()
-        intent = route(msg.text, self.offices.names)
-
-        if intent is Intent.GREETING:
-            result = Response(
-                answer="Hello! I can help with offices, fees and rules.",
-                intent=intent,
-            )
-        elif intent is Intent.FEE:
-            result = self._fee(msg.text)
-        elif intent is Intent.OFFICE:
-            office = self.offices.find(msg.text)
-            if office is None:
-                result = Response(answer="Sorry, I don't know that yet.", intent=Intent.UNKNOWN)
-            else:
-                result = Response(
-                    answer=f"{office.name}: room {office.room}, open {office.hours}",
-                    intent=Intent.OFFICE,
-                )
+        # Protect private student data before any deterministic or RAG routing.
+        if self.rag is not None and is_private_request(msg.text):
+            result = Response(answer=PRIVATE_REPLY, intent=Intent.UNKNOWN, path="abstain")
         else:
-            result = self._rule(msg.text)
+            intent = route(msg.text, self.offices.names)
+            result = self._dispatch(intent, msg.text)
 
         log.info(
             "handled",
@@ -70,6 +56,28 @@ class AssistantService:
                 "degraded": result.degraded,
             },
         )
+        return result
+
+    def _dispatch(self, intent: Intent, text: str) -> Response:
+        if intent is Intent.GREETING:
+            result = Response(
+                answer="Hello! I can help with offices, fees and rules.",
+                intent=intent,
+            )
+        elif intent is Intent.FEE:
+            result = self._fee(text)
+        elif intent is Intent.OFFICE:
+            office = self.offices.find(text)
+            if office is None:
+                result = Response(answer="Sorry, I don't know that yet.", intent=Intent.UNKNOWN)
+            else:
+                result = Response(
+                    answer=f"{office.name}: room {office.room}, open {office.hours}",
+                    intent=Intent.OFFICE,
+                )
+        else:
+            result = self._rule(text)
+
         return result
 
     def _fee(self, text: str) -> Response:

@@ -12,7 +12,7 @@ The purpose is to compare correctness, abstention behavior, and response latency
 
 ## 2. Evaluation Method
 
-The evaluation uses 25 cases from `eval/cases.jsonl`, including normal questions, paraphrases, and ambiguous or out-of-scope questions.
+The original baseline uses E01–E20, and the expanded H1 benchmark uses E01–E25 from `eval/cases.jsonl`, including normal questions, paraphrases, and ambiguous or out-of-scope questions. Both are now run separately in CI.
 
 The benchmark measures:
 
@@ -23,7 +23,7 @@ The benchmark measures:
 
 Command:
 
-`python eval/compare_paths.py`
+`python eval/compare_paths.py --first 20` (baseline) and `python eval/compare_paths.py --first 25` (expanded)
 
 Both runs below used the local `stub` LLM provider. The two result sets are kept separate because E21–E23 were revised to test distinct facts; the scores are not interchangeable.
 
@@ -32,6 +32,18 @@ Both runs below used the local `stub` LLM provider. The two result sets are kept
 ### Run A — Earlier 25-case wording
 
 This is the earlier comparison recorded before the E21–E23 wording revision.
+
+### Original E01–E20 baseline
+
+Measured independently in GitHub Actions CI [run #44541714180](https://github.com/vinhdu1233-tech/assistant-core-team05/actions/runs/44541714180) using `LLM_PROVIDER=stub` and `python eval/compare_paths.py --first 20`:
+
+| Path | Correct (E01–E20) | Abstain OK | P50 (ms) | Max (ms) |
+|---|---:|---:|---:|---:|
+| Deterministic | 7/20 (35%) | 5/5 (100%) | 0.0 | 1.0 |
+| Retrieval | 14/20 (70%) | 4/5 (80%) | 0.1 | 0.1 |
+| LLM (stub) | 14/20 (70%) | 4/5 (80%) | 0.1 | 0.4 |
+
+### Expanded E01–E25 benchmark
 
 | Path | Correct | Abstain OK | P50 (ms) | Max (ms) |
 |---|---:|---:|---:|---:|
@@ -76,6 +88,18 @@ Its maximum latency was higher than retrieval in both runs, but these measuremen
 The deterministic path correctly handled all seven expected-abstention cases.
 
 Both retrieval and LLM (stub) handled six out of seven correctly in the revised run. E19 asks whether the final exam is open-book, but the knowledge base does not specify this information. This case should be investigated to determine why the system did not abstain as expected.
+
+### Required case-by-case analysis
+
+- **E13 (tuition due vs paid):** The question asks about a deadline (`F26#3`), not a fee calculation. Lexical routing/retrieval can conflate tuition payment dates with tuition amounts; the expected source is not returned.
+- **E14 (credit vs credits):** The question asks whether 32 credits are allowed (`H26#6.1`). The singular/plural wording and the number can trigger an inappropriate fee/tool route or miss the relevant enrollment policy. The expected source is not returned.
+- **E15 (library loan duration):** The question is about borrowing policy (`S26#1`), not the physical location of the library. Office routing can intercept it before RAG retrieval.
+- **E19 (open-book exam):** The KB discusses exams but does not establish whether this particular exam is open-book. A lexically related source is not sufficient evidence, so retrieval/LLM should abstain rather than cite it.
+- **E22 (multi-part library request):** The question combines borrowing limit, duration, and renewal; office/library location routing or a nonmatching top chunk prevents the expected `S26#1` citation. It is part of the 25-case expansion only.
+
+**Recommended path for handbook questions:** Use retrieval with grounded citations as the practical baseline: it reaches 14/20 on the original cases and 18/25 on the expanded cases, while avoiding an external LLM dependency. The local LLM stub adds no measured accuracy in this experiment. Keep deterministic tools for actual fee calculations and privacy refusals.
+
+**First failure to fix:** E15, because a library-policy query is easily confused with a library-location request by the intent router; correcting this distinction should also help the expanded E22. This recommendation is based on the documented failures and code routing, not a claim that a fix has already been verified.
 
 ## 5. Limitations
 

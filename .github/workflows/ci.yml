@@ -32,7 +32,13 @@ jobs:
           PYTHONPATH: src
         run: python -m pytest -q
 
-      - name: Run Lab 6 comparison (offline stub)
+      - name: Run Lab 6 original 20-case comparison (offline stub)
+        env:
+          PYTHONPATH: src
+          LLM_PROVIDER: stub
+        run: python eval/compare_paths.py --first 20
+
+      - name: Run Lab 6 expanded 25-case comparison (offline stub)
         env:
           PYTHONPATH: src
           LLM_PROVIDER: stub
