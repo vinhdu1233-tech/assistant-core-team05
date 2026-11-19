@@ -31,13 +31,13 @@ The benchmark was run locally using the `stub` LLM provider.
 
 ### Original E01–E20 baseline
 
-The case-level failure list in the recorded 25-case run implies the following **20-case correctness/abstention counts** (exclude E21–E25). These counts are derived from that run, **not** independently measured latency results. The updated CI runs the original 20 cases separately; use its logs for measured P50/max latency rather than estimating values.
+Measured independently in GitHub Actions CI [run #44541714180](https://github.com/vinhdu1233-tech/assistant-core-team05/actions/runs/44541714180) using `LLM_PROVIDER=stub` and `python eval/compare_paths.py --first 20`:
 
-| Path | Correct (E01–E20) | Abstain OK |
-|---|---:|---:|
-| Deterministic | 7/20 (35%) | 5/5 (100%) |
-| Retrieval | 14/20 (70%) | 4/5 (80%) |
-| LLM (stub) | 14/20 (70%) | 4/5 (80%) |
+| Path | Correct (E01–E20) | Abstain OK | P50 (ms) | Max (ms) |
+|---|---:|---:|---:|---:|
+| Deterministic | 7/20 (35%) | 5/5 (100%) | 0.0 | 1.0 |
+| Retrieval | 14/20 (70%) | 4/5 (80%) | 0.1 | 0.1 |
+| LLM (stub) | 14/20 (70%) | 4/5 (80%) | 0.1 | 0.4 |
 
 ### Expanded E01–E25 benchmark
 
