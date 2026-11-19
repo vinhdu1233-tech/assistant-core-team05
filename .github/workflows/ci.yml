@@ -32,6 +32,12 @@ jobs:
           PYTHONPATH: src
         run: python -m pytest -q
 
+      - name: Run Lab 6 comparison (offline stub)
+        env:
+          PYTHONPATH: src
+          LLM_PROVIDER: stub
+        run: python eval/compare_paths.py
+
       - name: Check code with Ruff
         if: always()
         run: python -m ruff check .
