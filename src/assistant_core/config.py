@@ -4,9 +4,10 @@ import os
 from pathlib import Path
 
 from dotenv import load_dotenv
-from pydantic import BaseModel, Field, ValidationError
+from pydantic import BaseModel, Field, ValidationError, model_validator
 
 from assistant_core.errors import ConfigError
+from assistant_core.rag.index import DEFAULT_MIN_SCORES
 
 
 class Settings(BaseModel):
@@ -18,7 +19,7 @@ class Settings(BaseModel):
     llm_base_url: str | None = None
     kb_dir: Path = Path("data/kb")
     retrieval_kind: str = "bm25"
-    retrieval_min_score: float = Field(default=2.0, ge=0)
+    retrieval_min_score: float = Field(default=2.0, ge=0, allow_inf_nan=False)
     prompt_version: str = "answer_v1"
     credit_rate_vnd: int = Field(default=450_000, gt=0)
     retake_multiplier: float = Field(default=1.5, gt=0)
@@ -33,6 +34,21 @@ class Settings(BaseModel):
     database_url: str = "sqlite:///assistant.db"
     session_salt: str = Field(default="dev-salt", repr=False)
 
+    @model_validator(mode="before")
+    @classmethod
+    def choose_retrieval_min_score(cls, data):
+        if isinstance(data, dict) and "retrieval_min_score" not in data:
+            kind = data.get("retrieval_kind", "bm25")
+            if isinstance(kind, str) and kind in DEFAULT_MIN_SCORES:
+                return {**data, "retrieval_min_score": DEFAULT_MIN_SCORES[kind]}
+        return data
+
+    @model_validator(mode="after")
+    def validate_retrieval_scale(self):
+        if self.retrieval_kind in {"tfidf", "hybrid"} and self.retrieval_min_score > 1.0:
+            raise ValueError("TF-IDF and hybrid retrieval thresholds must be between 0 and 1")
+        return self
+
 
 def load_settings(env_file: str | None = ".env") -> Settings:
     """Load environment settings without exposing credentials."""
@@ -40,6 +56,8 @@ def load_settings(env_file: str | None = ".env") -> Settings:
         load_dotenv(env_file, override=False)
 
     try:
+        threshold = os.getenv("RETRIEVAL_MIN_SCORE", "").strip()
+        overrides = {"retrieval_min_score": float(threshold)} if threshold else {}
         settings = Settings(
             data_dir=Path(os.getenv("ASSISTANT_DATA_DIR", "data")),
             llm_provider=os.getenv("LLM_PROVIDER", "stub"),
@@ -49,7 +67,7 @@ def load_settings(env_file: str | None = ".env") -> Settings:
             llm_base_url=os.getenv("LLM_BASE_URL") or None,
             kb_dir=Path(os.getenv("KB_DIR", "data/kb")),
             retrieval_kind=os.getenv("RETRIEVAL_KIND", "bm25"),
-            retrieval_min_score=float(os.getenv("RETRIEVAL_MIN_SCORE", "2.0")),
+            **overrides,
             prompt_version=os.getenv("PROMPT_VERSION", "answer_v1"),
             credit_rate_vnd=int(os.getenv("CREDIT_RATE_VND", "450000")),
             retake_multiplier=float(os.getenv("RETAKE_MULTIPLIER", "1.5")),
