@@ -34,25 +34,27 @@ The IDs follow the chunker convention `{doc_id}#{heading number}` and are presen
 
 ## Comparison run
 
-The required command is:
+The required command, run in CI with `LLM_PROVIDER=stub`, is:
 
 ```bash
 python eval/compare_paths.py
 ```
 
-The integration run on the *previous wording* completed in stub mode on all 25 cases:
+The revised-wording comparison completed successfully:
 
 | Path | Correct | Abstain OK | P50 (ms) | Max (ms) |
 |---|---:|---:|---:|---:|
-| deterministic | 9/25 | 7/7 | 0.0 | 0.6 |
-| retrieval | 18/25 | 6/7 | 0.0 | 0.1 |
-| llm (stub) | 18/25 | 6/7 | 0.0 | 0.2 |
+| deterministic | 9/25 | 7/7 | 0.0 | 1.1 |
+| retrieval | 17/25 | 6/7 | 0.1 | 0.1 |
+| llm (stub) | 17/25 | 6/7 | 0.1 | 0.3 |
 
-In that run, E21, E23, E24 and E25 passed in retrieval/LLM; E22 failed both because its original multi-part question did not produce the expected `S26#1` source. The deterministic path failed E21–E23, as expected for a path that does not retrieve KB documents, and correctly abstained on E24–E25. The other retrieval/LLM failures were E02, E12, E13, E14, E15 and E19; E19 is an ambiguous exam question that should abstain but did not.
+**New cases E21–E25:** E21, E24 and E25 passed in retrieval/LLM. E22 and E23 failed in both retrieval and LLM: the evaluation did not find the expected source ID (`S26#1` for E22 and `S26#3` for E23) in the returned sources. The comparison script reports failing case IDs but does not print retrieved candidates or answer text, so this run establishes the missing expected-source result but does not establish whether the cause was query matching, ranking, or later answer handling. The deterministic path failed E21–E23 because it does not retrieve KB documents, and correctly abstained on E24–E25.
 
-That earlier run was recorded by integration CI [run #44493281044](https://github.com/vinhdu1233-tech/assistant-core-team05/actions/runs/44493281044), commit `001e361e97069c7636930d58a3f3ac234eca751b`. These figures are retained as historical results only: E21–E23 have since been made more specific, so they are not the final results for the revised wording.
+**Failures to investigate first:** E22 and E23 are the two new normal cases that retrieval/LLM still miss. E22 is the first priority because it tests a conditional rule (renewal is allowed only when no one else has reserved the book); E23 is next because it asks for both the replacement fee and the application location. The current evaluation output does not provide enough diagnostic detail to attribute either failure to a specific retrieval or generation component.
 
-**Revised-wording comparison:** pending the CI run for this follow-up branch. The table and failure analysis above will be updated with that run's actual output before this follow-up is considered complete.
+Other retrieval/LLM failures were E02, E12, E13, E14, E15 and E19. E19 is an ambiguous exam question that should abstain but does not.
+
+CI run: [run #44514048519](https://github.com/vinhdu1233-tech/assistant-core-team05/actions/runs/44514048519), commit `1c4f9b18ed22c244d6c83b83b6c74beb1c65fff4`. It reported **173 passed, 1 warning**, with Ruff lint and Ruff format checks passing. The comparison completed successfully in stub mode. These latency values are specific to the GitHub Actions runner and local stub; they should not be generalized to a production LLM.
 
 ## Validation performed
 
@@ -60,4 +62,4 @@ That earlier run was recorded by integration CI [run #44493281044](https://githu
 - Confirmed that all 25 IDs are unique and E21–E25 are the five additional cases.
 - Confirmed that exactly three new cases use `expect_source` and exactly two use `expect_abstain: true`.
 - Confirmed the three expected source IDs and targeted facts against the actual KB files.
-- The integration CI run above reported 173 tests passed, Ruff lint passed, and Ruff format passed. The revised-wording CI validation is pending.
+- CI passed all 173 tests; Ruff lint and Ruff format passed.
