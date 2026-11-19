@@ -22,17 +22,21 @@ The three expected source IDs were checked against the actual Markdown knowledge
 
 The IDs follow the chunker convention `{doc_id}#{heading number}` and are present in the starter KB. E24 has no relevant KB section. E25 is also covered by the deterministic privacy guard before retrieval.
 
-## Comparison run
+## Comparison run (verified after integration)
 
-The requested command is:
+The integration CI executed `python eval/compare_paths.py` with `LLM_PROVIDER=stub` on all 25 cases after merging A1 (#49), A2 (#50), and H1 (#51).
 
-```bash
-python eval/compare_paths.py
-```
+| Path | Correct | Abstain OK | P50 (ms) | Max (ms) |
+|---|---:|---:|---:|---:|
+| deterministic | 9/25 | 7/7 | 0.0 | 0.6 |
+| retrieval | 18/25 | 6/7 | 0.0 | 0.1 |
+| llm (stub) | 18/25 | 6/7 | 0.0 | 0.2 |
 
-**Run status: blocked on integration of A1 and A2.** At the time this change was prepared, the feature branch is based on `setup/lab06-rag`, where `RagAnswerer.answer()` still contains the A1 `NotImplementedError` for empty results and `parse_draft()` still contains the A2 grounding TODO. The corresponding implementation PRs are #49 (M1/A1) and #50 (M4/A2); neither change is part of this M5 branch. Running the comparison against this branch before those changes are integrated cannot produce a valid final comparison table. I have not inserted guessed accuracy or latency figures.
+**New cases E21–E25:** E21, E23, E24 and E25 pass in retrieval/LLM; E22 fails both retrieval and LLM. E22 asks a multi-part library question and expects `S26#1`; the current benchmark does not return a passing answer for that source expectation. This is an evaluation limitation, not a unit-test failure. For the deterministic path, E21–E23 fail while E24–E25 correctly abstain.
 
-After #49 and #50 are merged into `setup/lab06-rag`, update this feature branch from the integration branch, run the command above from the repository root with `LLM_PROVIDER=stub`, and replace this note with the actual output table. The explanation must identify any failed E21–E25 cases and the reason. The original E01–E20 data must remain unchanged.
+**Other known failed retrieval/LLM cases:** E02, E12, E13, E14, E15, E19. E19 is an ambiguous exam question that should abstain but does not.
+
+The observed latency values are specific to GitHub Actions and the local stub, and may differ from M6's local benchmark. CI link: https://github.com/vinhdu1233-tech/assistant-core-team05/actions/runs/44493281044
 
 ## Validation performed
 
@@ -41,4 +45,4 @@ After #49 and #50 are merged into `setup/lab06-rag`, update this feature branch 
 - Confirmed that exactly three new cases use `expect_source` and exactly two use `expect_abstain: true`.
 - Confirmed the three expected source IDs against the actual KB files.
 
-Full evaluation and repository test/Ruff commands remain pending the A1/A2 integration noted above.
+After integration: GitHub Actions reported 173 passed, Ruff lint passed, Ruff format passed, and the 25-case evaluation completed successfully.
