@@ -13,6 +13,13 @@ class Settings(BaseModel):
     data_dir: Path = Path("data")
     llm_provider: str = "stub"
     llm_api_key: str | None = Field(default=None, repr=False)
+    llm_timeout_s: float = Field(default=5.0, gt=0)
+    llm_model: str = "llama3.2"
+    llm_base_url: str | None = None
+    kb_dir: Path = Path("data/kb")
+    retrieval_kind: str = "bm25"
+    retrieval_min_score: float = Field(default=2.0, ge=0)
+    prompt_version: str = "answer_v1"
     credit_rate_vnd: int = Field(default=450_000, gt=0)
     retake_multiplier: float = Field(default=1.5, gt=0)
     max_credits: int = Field(default=30, gt=0)
@@ -37,6 +44,13 @@ def load_settings(env_file: str | None = ".env") -> Settings:
             data_dir=Path(os.getenv("ASSISTANT_DATA_DIR", "data")),
             llm_provider=os.getenv("LLM_PROVIDER", "stub"),
             llm_api_key=os.getenv("LLM_API_KEY") or None,
+            llm_timeout_s=float(os.getenv("LLM_TIMEOUT_S", "5")),
+            llm_model=os.getenv("LLM_MODEL", "llama3.2"),
+            llm_base_url=os.getenv("LLM_BASE_URL") or None,
+            kb_dir=Path(os.getenv("KB_DIR", "data/kb")),
+            retrieval_kind=os.getenv("RETRIEVAL_KIND", "bm25"),
+            retrieval_min_score=float(os.getenv("RETRIEVAL_MIN_SCORE", "2.0")),
+            prompt_version=os.getenv("PROMPT_VERSION", "answer_v1"),
             credit_rate_vnd=int(os.getenv("CREDIT_RATE_VND", "450000")),
             retake_multiplier=float(os.getenv("RETAKE_MULTIPLIER", "1.5")),
             max_credits=int(os.getenv("MAX_CREDITS", "30")),
@@ -56,7 +70,13 @@ def load_settings(env_file: str | None = ".env") -> Settings:
     except (ValueError, ValidationError):
         raise ConfigError("Invalid environment configuration") from None
 
-    if settings.llm_provider != "stub" and not settings.llm_api_key:
-        raise ConfigError("LLM_API_KEY is required for a non-stub provider")
+    # Preserve the legacy "remote" configuration accepted by Lab 05 tests.
+    # The application does not instantiate a remote adapter without an explicit provider.
+    if settings.llm_provider not in {"stub", "template", "ollama", "openai", "remote"}:
+        raise ConfigError("Unsupported LLM provider")
+    if settings.llm_provider in {"openai", "remote"} and not settings.llm_api_key:
+        raise ConfigError("LLM_API_KEY is required for the remote/openai provider")
+    if settings.retrieval_kind not in {"bm25", "tfidf", "hybrid"}:
+        raise ConfigError("Invalid retrieval index kind")
 
     return settings
