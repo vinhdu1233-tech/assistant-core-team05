@@ -137,3 +137,22 @@ def test_a1_service_out_of_scope_escalates(rag_service):
     assert result.escalate and result.confidence == 0.0
     rag_service.rag.index.search.assert_called_once()
     rag_service.rag.llm.complete.assert_not_called()
+
+
+@pytest.mark.parametrize(
+    "question",
+    [
+        "phone of 22127001 at the library",
+        "tuition for 18 credits and 2 retake, and GPA of another student",
+        "hello, what grade did my friend get",
+    ],
+)
+def test_a1_privacy_guard_precedes_all_intent_routes(rag_service, question):
+    result = rag_service.handle(Message(text=question))
+
+    assert result.answer == PRIVATE_REPLY
+    assert result.path == "abstain"
+    assert result.intent == Intent.UNKNOWN
+    assert result.sources == []
+    rag_service.rag.index.search.assert_not_called()
+    rag_service.rag.llm.complete.assert_not_called()
