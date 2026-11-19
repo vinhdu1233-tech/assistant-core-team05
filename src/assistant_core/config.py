@@ -34,7 +34,6 @@ class Settings(BaseModel):
     database_url: str = "sqlite:///assistant.db"
     session_salt: str = Field(default="dev-salt", repr=False)
 
-
     @model_validator(mode="before")
     @classmethod
     def choose_retrieval_min_score(cls, data):

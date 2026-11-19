@@ -35,7 +35,7 @@ class RagAnswerer:
         retries: int = 1,
         tool_runner: Callable[[str], str | None] | None = None,
     ):
-        cosine_scale = isinstance(index, (TfidfIndex, HybridIndex))
+        cosine_scale = isinstance(index, TfidfIndex | HybridIndex)
         if min_score is None:
             min_score = DEFAULT_MIN_SCORES["tfidf" if cosine_scale else "bm25"]
         if not math.isfinite(min_score) or min_score < 0 or (cosine_scale and min_score > 1.0):

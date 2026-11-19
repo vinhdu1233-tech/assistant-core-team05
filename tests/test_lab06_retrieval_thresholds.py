@@ -127,3 +127,20 @@ def test_nonfinite_retrieval_evidence_abstains_before_model(score):
     assert result.path == "abstain" and result.escalate and result.confidence == 0.0
     assert not result.sources
     model.complete.assert_not_called()
+
+
+@pytest.mark.parametrize(
+    ("question", "source", "score"),
+    [
+        ("can I register my thesis with 118 credits", "H26#5.3", 4.914),
+        ("How can I reset my IT account password?", "S26#2", 10.311),
+        ("How long may I borrow library books?", "S26#1", 8.719),
+        ("What happens if I register my thesis late?", "H26#5.4", 4.899),
+    ],
+)
+def test_bm25_preserves_m2_recorded_retrieval_results(question, source, score):
+    chunks = load_folder(DATA / "kb")
+    assert len(chunks) == 14
+    hit = make_index("bm25", chunks).search(question)[0]
+    assert hit.chunk.id == source
+    assert hit.score == pytest.approx(score, abs=0.001)
