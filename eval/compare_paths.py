@@ -10,6 +10,7 @@ llm           — router + tools + retrieval + LLM with structured output (provi
 
 from __future__ import annotations
 
+import argparse
 import json
 import statistics
 import sys
@@ -43,8 +44,12 @@ def correct(case: dict, resp) -> bool:
 
 
 def main() -> int:
+    parser = argparse.ArgumentParser(description="Compare deterministic, retrieval and LLM paths")
+    parser.add_argument("--first", type=int, choices=[20, 25], default=25, help="Run original 20 or expanded 25 cases")
+    args = parser.parse_args()
     s = load_settings()
     cases = [json.loads(line) for line in Path("eval/cases.jsonl").read_text(encoding="utf-8").splitlines() if line]
+    cases = cases[: args.first]
     offices = OfficeDirectory.from_csv(s.data_dir / "offices.csv")
     handbook = Handbook.from_json(s.data_dir / "handbook.json")
     chunks = load_folder(s.kb_dir)
