@@ -18,6 +18,8 @@ from typing import Protocol
 
 from assistant_core.rag.chunker import Chunk
 
+DEFAULT_MIN_SCORES = {"bm25": 2.0, "tfidf": 0.25, "hybrid": 0.25}
+
 STOP = frozenset(
     "a an and are at be by can do for from how i in is it my of on or the to what when where who with".split()
 )
@@ -85,20 +87,25 @@ class TfidfIndex:
 
 
 class HybridIndex:
-    """Reciprocal-rank fusion: score = sum 1 / (60 + rank). Scores are for ranking only."""
+    """Rank with reciprocal-rank fusion; expose cosine relevance for A1, not rank strength."""
 
     def __init__(self, chunks: list[Chunk]):
         self.bm25, self.tfidf = BM25Index(chunks), TfidfIndex(chunks)
 
     def search(self, query: str, k: int = 3) -> list[Hit]:
         fused: dict[str, float] = {}
-        best: dict[str, Hit] = {}
-        for hits in (self.bm25.search(query, 10), self.tfidf.search(query, 10)):
+        # Calculate cosine for every matching candidate, including BM25-only top-ten hits.
+        cosine_hits = self.tfidf.search(query, len(self.tfidf.chunks))
+        cosine = {h.chunk.id: h for h in cosine_hits}
+        candidates: dict[str, Chunk] = {}
+        for hits in (self.bm25.search(query, 10), cosine_hits[:10]):
             for rank, h in enumerate(hits):
                 fused[h.chunk.id] = fused.get(h.chunk.id, 0) + 1 / (60 + rank)
-                best.setdefault(h.chunk.id, h)
+                candidates[h.chunk.id] = h.chunk
         top = sorted(fused, key=lambda cid: -fused[cid])[:k]
-        return [Hit(best[cid].chunk, best[cid].score) for cid in top]
+        # RRF scores depend on ranks and cannot distinguish strong from weak matches.
+        # Every returned Hit uses the same cosine scale [0, 1], regardless of its ranker.
+        return [Hit(candidates[cid], cosine[cid].score if cid in cosine else 0.0) for cid in top]
 
 
 def make_index(kind: str, chunks: list[Chunk]) -> Index:

@@ -9,12 +9,13 @@ Order of defences:
 from __future__ import annotations
 
 import logging
+import math
 from collections.abc import Callable
 
 from assistant_core.errors import InvalidRequest, ProviderError
 from assistant_core.llm import LLM, AnswerDraft, build_prompt, parse_draft
 from assistant_core.models import Intent, Response, Source
-from assistant_core.rag.index import Index
+from assistant_core.rag.index import DEFAULT_MIN_SCORES, HybridIndex, Index, TfidfIndex
 
 log = logging.getLogger("assistant_core.rag")
 ESCALATE_MSG = (
@@ -28,19 +29,24 @@ class RagAnswerer:
         self,
         index: Index,
         llm: LLM | None,
-        min_score: float = 2.0,
+        min_score: float | None = None,
         k: int = 3,
         prompt_version: str = "answer_v1",
         retries: int = 1,
         tool_runner: Callable[[str], str | None] | None = None,
     ):
+        cosine_scale = isinstance(index, (TfidfIndex, HybridIndex))
+        if min_score is None:
+            min_score = DEFAULT_MIN_SCORES["tfidf" if cosine_scale else "bm25"]
+        if not math.isfinite(min_score) or min_score < 0 or (cosine_scale and min_score > 1.0):
+            raise ValueError("Invalid minimum score for retrieval index")
         self.index, self.llm, self.min_score, self.k = index, llm, min_score, k
         self.prompt_version, self.retries, self.tool_runner = prompt_version, retries, tool_runner
 
     def answer(self, question: str) -> Response:
         hits = self.index.search(question, self.k)
         # A1: refuse unsupported questions before creating a prompt or calling the model.
-        if not hits or hits[0].score < self.min_score:
+        if not hits or not math.isfinite(hits[0].score) or hits[0].score < self.min_score:
             return Response(answer=ESCALATE_MSG, intent=Intent.UNKNOWN, path="abstain", escalate=True, confidence=0.0)
         sources = {h.chunk.id: Source(id=h.chunk.id, title=h.chunk.title) for h in hits}
         top = hits[0].chunk
