@@ -29,7 +29,8 @@ def format_sources(sources: list[dict]) -> str:
 def status_note(result: ChatResult) -> str | None:
     """A short note shown under the answer, explaining special situations."""
     # TODO L2 (5 lines):
-    #   if result.escalate -> "I could not find this in the official documents. A staff member can help: Training Office, room I.101."
+    #   if result.escalate -> "I could not find this in the official documents.
+    #   A staff member can help: Training Office, room I.101."
     #   elif result.degraded -> "Shown directly from the source document (the AI helper was unavailable)."
     #   else -> None
     raise NotImplementedError("L2")
