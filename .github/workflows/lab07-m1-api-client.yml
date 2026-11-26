@@ -1,0 +1,35 @@
+name: Lab 07 M1 API client
+
+on:
+  push:
+    paths:
+      - "ui/api_client.py"
+      - "tests/test_lab07_api_client_m1.py"
+      - ".github/workflows/lab07-m1-api-client.yml"
+  pull_request:
+    paths:
+      - "ui/api_client.py"
+      - "tests/test_lab07_api_client_m1.py"
+      - ".github/workflows/lab07-m1-api-client.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  m1-http-client:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install dependencies
+        run: |
+          python -m pip install -r requirements.txt
+          python -m pip install -e .
+      - name: Verify real FastAPI contract and M1 regression tests
+        run: python -m pytest -q tests/test_lab07_api_client_m1.py
+      - name: Lint M1-owned code
+        run: python -m ruff check ui/api_client.py tests/test_lab07_api_client_m1.py
+      - name: Check formatting for M1-owned code
+        run: python -m ruff format --check ui/api_client.py tests/test_lab07_api_client_m1.py
