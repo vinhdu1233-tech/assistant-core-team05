@@ -299,3 +299,17 @@ def test_real_fastapi_rate_limit_message(tmp_path):
             assert client.ask("hello", "tab-2").ok
             throttled = client.ask("hello again", "tab-2")
             assert not throttled.ok and "wait a minute" in throttled.error
+
+
+def test_temporary_ruff_format_diagnostic():
+    import subprocess
+    import sys
+
+    outcome = subprocess.run(
+        [sys.executable, "-m", "ruff", "format", "--diff",
+         "ui/api_client.py", "tests/test_lab07_api_client_m1.py"],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    pytest.fail("M1_RUFF_FORMAT_DIFF\\n" + outcome.stdout + outcome.stderr)
