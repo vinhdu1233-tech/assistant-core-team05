@@ -1,8 +1,8 @@
-# Lab 07 H2 — M2 draft for personal review
+# Lab 07 H2 — M2 reflection
 
-When the assistant cannot find an answer in the handbook, the status note gives the student a concrete next step by directing them to the Training Office in room I.101.
-I would let students add a short reason after a thumbs-down so they can distinguish an incorrect answer from an unclear source.
+When the assistant cannot find an answer in the handbook, our status note directs the student to the Training Office in room I.101 so they know where to ask next.
+I would add an optional comment after a thumbs-down so a student could explain whether the answer was wrong or the cited source was hard to understand.
 
-Reading: [Errors + Graceful Failure](https://pair.withgoogle.com/guidebook-v2/chapter/errors-failing/) and [Feedback + Control](https://pair.withgoogle.com/guidebook-v2/chapter/feedback-controls/).
+[Errors + Graceful Failure](https://pair.withgoogle.com/guidebook-v2/chapter/errors-failing/) · [Feedback + Control](https://pair.withgoogle.com/guidebook-v2/chapter/feedback-controls/)
 
-AI-assisted draft. M2 should confirm these sentences after reading the assigned chapters.
+*AI-assisted writing*
