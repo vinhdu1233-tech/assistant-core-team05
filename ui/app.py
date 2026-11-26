@@ -14,6 +14,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))  # so "import ui...
 
 from ui.api_client import AssistantClient
 from ui.logic import EXAMPLES, WELCOME, format_sources, status_note, validate_input
+from ui.presentation import clarify_thesis_eligibility
 
 st.set_page_config(page_title="FIT Study Assistant", page_icon="🎓")
 client = AssistantClient(os.getenv("ASSISTANT_API_URL", "http://127.0.0.1:8000"))
@@ -81,10 +82,13 @@ if question:
         with st.spinner("Thinking…"):
             result = client.ask(question, st.session_state.session_id)
         if result.ok:
+            answer_text = result.answer
+            if not result.escalate and any(source["id"] == "H26#5.3" for source in result.sources):
+                answer_text = clarify_thesis_eligibility(question, result.answer)
             st.session_state.messages.append(
                 {
                     "role": "assistant",
-                    "content": result.answer,
+                    "content": answer_text,
                     "sources": format_sources(result.sources),
                     "note": status_note(result),
                     "request_id": result.request_id,
