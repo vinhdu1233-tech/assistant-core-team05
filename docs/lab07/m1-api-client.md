@@ -1,6 +1,6 @@
 # Lab 07 — M1 HTTP API Client / Issue #57
 
-**Owner:** M1 (vinhdu1233-tech). **Base:** M3 setup PR #63 merged to `main` at `7f978125`.  
+**Owner:** M1 (vinhdu1233-tech). **Base:** M3 setup PR #63 plus M2 PR #65 and shared CI fixes, integrated from `main` at `87b9a1b` through a two-parent merge commit `fb8bb4d`. The M1 API client implementation remains unchanged.  
 **Instructor source:** CSC10014 Lab 7 pp. 3, 6, 9–10, 12; M1 responsibility shown in the team assignment.  
 **File ownership:** `ui/api_client.py`, M1-specific regression tests and this handoff note. No changes to M2's `ui/logic.py`, M3's `ui/app.py`, backend, or starter tests.
 
@@ -38,7 +38,7 @@ Two tests call the **actual FastAPI app** in-process via FastAPI TestClient and 
 
 The new dedicated GitHub Actions workflow also starts **both actual local processes** on the CI runner: FastAPI (port 8000) and Streamlit (port 8501). It waits until both HTTP health endpoints return success, retrieves the Streamlit HTML page, calls the live FastAPI through this M1 AssistantClient, checks `request_id` and session propagation, posts -1 feedback, verifies the saved feedback via authenticated admin GET, rejects an unknown feedback ID, and checks HTTP 422. All requests use synthetic data and a disposable SQLite file; processes are killed at the end of the job.
 
-[First verified two-server smoke success, CI #45762782196](https://github.com/vinhdu1233-tech/assistant-core-team05/actions/runs/45762782196): **63 M1 tests passed**, Ruff lint PASS, Ruff format PASS, and the live-port smoke PASS. A successful health request to Streamlit proves its server launched, **not** that a human clicked through every browser interaction. M3/M5 must still finish visual/UX and end-to-end browser acceptance checks after L1/L2 and F1 feedback UI wiring are complete.
+[First verified two-server smoke success, CI #45762782196](https://github.com/vinhdu1233-tech/assistant-core-team05/actions/runs/45762782196): **63 M1 tests passed**, Ruff lint PASS, Ruff format PASS, and the live-port smoke PASS. A successful health request to Streamlit proves its server launched, **not** that a human clicked through every browser interaction. M3/M5 must still finish human visual/UX and end-to-end browser acceptance checks. L1/L2 and U2–U4 are now merged; M3's feedback confirmation follow-up remains separately reviewable in PR #69.
 
 ## H2 reflection
 `docs/lab07/m1-h2-reflection.md` provides the requested **two sentences** (one idea applied; one proposed improvement), marked as an AI-assisted draft for the M1 member to review after reading the assigned Google PAIR pages.
@@ -58,9 +58,9 @@ $env:ASSISTANT_API_URL = "http://127.0.0.1:8000"
 streamlit run ui/app.py
 ```
 
-Visit `http://127.0.0.1:8501`; verify no red backend banner, a thesis question returns a source, its answer has a request ID for feedback, and 👍/👎 can send to the API. Restart API, check page becomes unreachable then recovers. Submit an empty/oversized question and trigger rate limiting. The chat UI is a separate member's file; note that the setup UI can currently thank the user after a failed feedback POST, which **requires an M3 fix in `ui/app.py`** before claiming end-to-end feedback UX fully correct.
+Visit `http://127.0.0.1:8501`; verify no red backend banner, a thesis question returns a source, its answer has a request ID for feedback, and 👍/👎 can send to the API. Restart API, check page becomes unreachable then recovers. Submit an empty/oversized question and trigger rate limiting. The chat UI is a separate member's file; M3 has proposed a fix for feedback false-acknowledgments in [PR #69](https://github.com/vinhdu1233-tech/assistant-core-team05/pull/69). End-to-end browser acceptance remains M3/M5-owned and must be verified on the final merged UI.
 
-**Coordination:** PR #65 (M2 L1/L2) and warm-up U2–U4 are separate tasks that were still pending on base at the time of this handoff. Do not disable or skip their tests just to make the M1 PR appear green. CI must be evaluated with these known base failures attributed accurately.
+**Current integrated status:** PR #65 (M2 L1/L2) and warm-up U2–U4, plus the starter Ruff format fixes, are already merged into `main` at `87b9a1b`. [Main CI #45812259468](https://github.com/vinhdu1233-tech/assistant-core-team05/actions/runs/45812259468) is green, including both Lab 6 evaluation runs. M1 PR #66 has incorporated that commit, preserving the implementation of `ui/api_client.py`; re-check the final PR-head full CI separately. No tests have been disabled or skipped.
 
 ## AI assistance
 ChatGPT assisted with code, tests, and documentation. All network/database tests use synthetic IDs/data; no real student information or private API keys are committed. Have a teammate review this PR before merging to main.
