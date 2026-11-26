@@ -5,11 +5,15 @@ on:
     paths:
       - "ui/api_client.py"
       - "tests/test_lab07_api_client_m1.py"
+      - "docs/lab07/m1-api-client.md"
+      - "docs/lab07/m1-h2-reflection.md"
       - ".github/workflows/lab07-m1-api-client.yml"
   pull_request:
     paths:
       - "ui/api_client.py"
       - "tests/test_lab07_api_client_m1.py"
+      - "docs/lab07/m1-api-client.md"
+      - "docs/lab07/m1-h2-reflection.md"
       - ".github/workflows/lab07-m1-api-client.yml"
 
 permissions:
