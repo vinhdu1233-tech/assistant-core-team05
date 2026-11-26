@@ -1,8 +1,8 @@
-﻿# Lab 7 H1 — Real User Testing & Usability Improvement
+# H1 — Real User Testing & Usability Improvement
 
 **Owner:** lnmthi
 **Issue:** #62
-**Original branch:** `feat/h1-lnmthi-lab07`
+**Branch:** `feat/h1-lnmthi-lab07`
 **Integrated implementation:** PR #71 / commit `bb017ce`
 
 ## 1. Test objective
@@ -11,7 +11,7 @@ Evaluate whether a student outside the project team can independently use the as
 
 1. Determine whether a student with 118 accumulated credits can register a thesis.
 2. Find where to replace a lost student card.
-3. Understand the assistant's answer, source information, and available feedback controls.
+3. Understand the assistant's answer, source information, and feedback controls.
 
 The participant was allowed to interact with the UI independently. The tester did not guide or explain the answers during the tasks.
 
@@ -68,6 +68,13 @@ The helper avoids adding a conclusion when the question contains multiple credit
 
 **Regression coverage:** The test for "I took 18 credits this semester and have 118 credits in total" verifies that the helper preserves the original answer rather than calculating a misleading shortfall from 18.
 
+- [x] Thesis eligibility presentation test added.
+- [x] Non-thesis answer remains unchanged.
+- [x] Answer without a detectable credit threshold remains unchanged.
+- [x] `python -m pytest -q tests/test_ui.py tests/test_ui_presentation.py` — 10 passed.
+- [x] `python -m ruff check ui tests/test_ui_presentation.py` — All checks passed.
+- [x] Manually verified the 118-credit answer in the UI.
+
 ## 6. Technical validation
 
 The following checks were run locally on the integrated `main` commit `623fbab`:
@@ -115,7 +122,7 @@ Do not explain the interface or lead the participant toward a particular answer.
 
 If fewer than three difficulties are observed, report the actual number. Do not invent findings to fill the table.
 
-### Follow-up evidence
+### Follow-up evidence checklist
 
 - [ ] Record participant first name only.
 - [ ] Record test date and duration.
