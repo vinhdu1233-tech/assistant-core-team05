@@ -199,14 +199,17 @@ def test_feedback_does_not_retry_on_server_failure():
     assert len(requests) == 1
 
 
-@pytest.mark.parametrize(("status", "payload", "expected"), [
-    (200, {"status": "ok", "version": "1.0.0"}, True),
-    (200, {"status": "degraded"}, False),
-    (200, [], False),
-    (200, {}, False),
-    (503, {"status": "ok"}, False),
-    (404, {"status": "ok"}, False),
-])
+@pytest.mark.parametrize(
+    ("status", "payload", "expected"),
+    [
+        (200, {"status": "ok", "version": "1.0.0"}, True),
+        (200, {"status": "degraded"}, False),
+        (200, [], False),
+        (200, {}, False),
+        (503, {"status": "ok"}, False),
+        (404, {"status": "ok"}, False),
+    ],
+)
 def test_health_checks_status_and_response_contract(status, payload, expected):
     seen = []
 
@@ -248,6 +251,7 @@ def test_full_http_contract_with_actual_fastapi_and_sqlite(tmp_path):
         rate_limit_per_min=30,
     )
     with TestClient(create_app(settings=settings)) as api:
+
         def bridge(request):
             response = api.request(
                 request.method, request.url.path, content=request.content, headers={"content-type": "application/json"}
@@ -289,6 +293,7 @@ def test_real_fastapi_rate_limit_message(tmp_path):
         rate_limit_per_min=1,
     )
     with TestClient(create_app(settings=settings)) as api:
+
         def bridge(request):
             result = api.request(
                 request.method, request.url.path, content=request.content, headers={"content-type": "application/json"}
@@ -299,17 +304,3 @@ def test_real_fastapi_rate_limit_message(tmp_path):
             assert client.ask("hello", "tab-2").ok
             throttled = client.ask("hello again", "tab-2")
             assert not throttled.ok and "wait a minute" in throttled.error
-
-
-def test_temporary_ruff_format_diagnostic():
-    import subprocess
-    import sys
-
-    outcome = subprocess.run(
-        [sys.executable, "-m", "ruff", "format", "--diff",
-         "ui/api_client.py", "tests/test_lab07_api_client_m1.py"],
-        capture_output=True,
-        text=True,
-        check=False,
-    )
-    pytest.fail("M1_RUFF_FORMAT_DIFF\\n" + outcome.stdout + outcome.stderr)
