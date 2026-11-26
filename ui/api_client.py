@@ -63,9 +63,7 @@ class AssistantClient:
 
         sources = data.get("sources", [])
         if not isinstance(sources, list) or any(
-            not isinstance(item, dict)
-            or not isinstance(item.get("id"), str)
-            or not isinstance(item.get("title"), str)
+            not isinstance(item, dict) or not isinstance(item.get("id"), str) or not isinstance(item.get("title"), str)
             for item in sources
         ):
             raise ValueError("Invalid sources")
