@@ -67,8 +67,23 @@ For the manual browser check, follow the project's setup instructions, start Fas
 
 ## Evidence status and limitations
 
-- The M5 AppTest cases are automated UI tests with a mocked client.
-- M1's rate-limit test exercises the real FastAPI app through TestClient; M5's rate-limit UI test verifies the resulting friendly message is rendered.
-- M3 owns feedback UI behavior and its dedicated regression tests.
+### M5 pull-request CI evidence
+
+The PR #70 merge-ref workflow run [#45819969398](https://github.com/vinhdu1233-tech/assistant-core-team05/actions/runs/45819969398) completed successfully on Ubuntu with Python 3.11.18:
+
+| Check | Result |
+|---|---|
+| `python -m pytest -q` | **237 passed, 1 warning** |
+| `python -m ruff check .` | **Passed** |
+| `python -m ruff format --check .` | **Passed — 60 files already formatted** |
+| Lab 6 original 20-case comparison | **Passed** |
+| Lab 6 expanded 25-case comparison | **Passed** |
+
+This run checks the M5 branch against the then-current `main` (including merged M2 PR #65). It does **not** include the still-open M1 PR #66 or M3 PR #69, so it is not evidence for their pending changes or for the fully integrated team branch.
+
+### Ownership and remaining validation
+
+- The M5 AppTest cases are automated UI tests with a deterministic mocked client. M5 verifies how the page renders the friendly 429 result; M1 owns the HTTP contract and real FastAPI rate-limit tests.
+- M3 owns 👍/👎 feedback behavior and its dedicated tests in PR #69. M5 does not duplicate those tests or modify `ui/app.py`.
 - Manual browser checks are still pending; this document does not claim they were performed.
-- Run the commands above on the integrated branch and record the actual CI/local results. Do not attribute unrelated baseline failures to M5 or report unobserved tests as passing.
+- After M1 #66 and M3 #69 are merged, rerun the listed suites and full CI on the integrated branch. Record the new results separately; do not attribute unrelated failures to M5 or report unobserved tests as passing.
