@@ -29,6 +29,8 @@ if "rated" not in st.session_state:
 if "feedback_messages" not in st.session_state:
     st.session_state.feedback_messages = {}
 st.title("🎓 FIT Study Assistant")
+if feedback_notice := st.session_state.pop("feedback_notice", None):
+    st.toast(feedback_notice)
 if not client.healthy():
     st.error("The assistant backend is not reachable. Start it with: uvicorn assistant_api.main:create_app --factory")
 
@@ -59,6 +61,7 @@ for i, m in enumerate(st.session_state.messages):
                 if client.send_feedback(rid, 1):
                     st.session_state.rated.add(rid)
                     st.session_state.feedback_messages[rid] = "Thanks for your feedback!"
+                    st.session_state.feedback_notice = st.session_state.feedback_messages[rid]
                     st.rerun()
                 else:
                     st.warning("Could not save your feedback. Please try again.")
@@ -67,6 +70,7 @@ for i, m in enumerate(st.session_state.messages):
                 if client.send_feedback(rid, -1):
                     st.session_state.rated.add(rid)
                     st.session_state.feedback_messages[rid] = "Thanks — we will look at this answer."
+                    st.session_state.feedback_notice = st.session_state.feedback_messages[rid]
                     st.rerun()
                 else:
                     st.warning("Could not save your feedback. Please try again.")

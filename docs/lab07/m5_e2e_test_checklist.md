@@ -2,6 +2,22 @@
 
 Related assignment: Issue #61.
 
+## Integrated browser run (M2)
+
+The following results were observed on the combined #66–#70 candidate with Chrome, a running Streamlit UI, FastAPI and a temporary SQLite database. Browser inputs were automated with Playwright. The primary backend used the offline stub model. This run is separate from the earlier M5-only and participant evidence below.
+
+| Browser action | Observed result |
+| --- | --- |
+| Click the thesis example in the sidebar | The question and answer appeared. The answer showed a two-credit shortfall for 118 credits, the 120-credit policy and source H26#5.3. See [before](evidence/before.png) and [after](evidence/after.png). |
+| Ask what the capital of France is | The status note directed the student to the Training Office, room I.101. |
+| Press Enter in an empty chat box, then separately submit 2,001 characters | Empty input left the chat history unchanged. The overlength message produced the validation warning. |
+| Give one positive and one negative rating | Chrome showed a confirmation toast for each. The backend returned both persisted ratings through its feedback endpoint. |
+| Submit the lost-card question at 390 × 844 | The answer and S26#3 appeared with the input visible and no page-level horizontal overflow. See [phone view](evidence/phone.png). |
+| Stop FastAPI and submit another question | The UI showed a backend warning and a friendly chat error. See [offline view](evidence/backend-down.png). |
+| Restart FastAPI with an unavailable local AI provider and a one-request rate limit | The first thesis response displayed its source-document fallback note. The next question produced the friendly rate-limit message. |
+
+Local integrated checks: 310 pytest cases passed with one dependency deprecation warning. Ruff lint and format checks passed (64 Python files). Both Lab 6 offline comparisons ran to completion; the stub answered 14/20 and 17/25 correctly.
+
 ## Scope and ownership
 
 This PR covers Member 5's Part E work: end-to-end UI scenarios, regression tests, and recording test evidence. It does not implement or modify features owned by M1 (`ui/api_client.py`), M2 (`ui/logic.py`), or M3 (`ui/app.py`).
@@ -34,7 +50,7 @@ The integrated test plan also relies on the following separately owned work:
 
 M5 does not duplicate the M1 HTTP contract tests or M3 feedback confirmation tests. Confirm those PRs are merged into the integration branch before treating the combined test suite as the final integrated result.
 
-## D.4 scenario checklist
+## D.4 scenario checklist on the original M5 branch
 
 | Scenario | M5 / team test coverage | Manual browser evidence |
 |---|---|---|

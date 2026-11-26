@@ -64,7 +64,9 @@ The original policy answer, including the GPA requirement and source, is preserv
 - [x] `python -m pytest -q tests/test_ui.py tests/test_ui_presentation.py` — 10 passed.
 - [x] `python -m ruff check ui tests/test_ui_presentation.py` — All checks passed.
 - [x] Manually verified the 118-credit answer in the UI.
-- [ ] Add before/after screenshots to the PR or attach them to the issue.
+- [x] Technical screenshots of the same question in a real browser: [before](../../docs/lab07/evidence/before.png) and [after](../../docs/lab07/evidence/after.png). The screenshots were taken during integration testing, separately from the participant session.
+
+The thesis wording was introduced in [the M6 branch](https://github.com/vinhdu1233-tech/assistant-core-team05/pull/67/files). The [integration fix](https://github.com/vinhdu1233-tech/assistant-core-team05/commit/bb017ce) restricts the extra conclusion to a grounded, unambiguous question.
 
 ## 7. Limitations
 

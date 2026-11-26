@@ -1,6 +1,31 @@
 # assistant-core-team05
 
-CSC10014 · Lab 3 — Engineering a Maintainable Python Service · Team 05
+CSC10014 · Smart Virtual Assistant · Team 05
+
+## Run the Lab 07 app
+
+From the repository root, activate a Python virtual environment and install the app:
+
+```shell
+python -m pip install -r requirements.txt
+python -m pip install -e .
+```
+
+Start FastAPI in the first terminal:
+
+```shell
+python -m uvicorn assistant_api.main:create_app --factory
+```
+
+In a second terminal, activate the same environment and start Streamlit:
+
+```shell
+python -m streamlit run ui/app.py
+```
+
+Open <http://localhost:8501>. The API health endpoint is <http://localhost:8000/health>.
+See the [Windows setup guide](docs/lab07/setup.md) for environment activation.
+The [integrated browser results](docs/lab07/m5_e2e_test_checklist.md) cover the chat workflow, feedback, phone layout and service failures.
 
 ## Source materials
 - Tutorial and starter monolith: https://github.com/CSC10014-at-fit-hcmus/public_materials/tree/main/lab03
