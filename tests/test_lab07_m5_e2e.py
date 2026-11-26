@@ -49,9 +49,10 @@ def test_sidebar_example_submits_selected_question(ui_app):
 
 def test_thesis_answer_renders_answer_and_multiple_sources(ui_app):
     app, ask, _ = ui_app
+    expected_answer = "You may register your thesis after meeting the credit requirement."
     ask.return_value = ChatResult(
         ok=True,
-        answer="You may register your thesis after meeting the credit requirement.",
+        answer=expected_answer,
         intent="rule",
         sources=[
             {"id": "H26#5.3", "title": "Thesis registration"},
@@ -63,7 +64,7 @@ def test_thesis_answer_renders_answer_and_multiple_sources(ui_app):
     app.chat_input[0].set_value("Can I register my thesis with 118 credits?").run()
 
     assert not app.exception
-    assert any("thesis" in item.value.lower() for item in app.markdown)
+    assert any(expected_answer in item.value for item in app.markdown)
     captions = [item.value for item in app.caption]
     assert any("H26#5.3" in value and "H26#5.4" in value for value in captions)
 
