@@ -1,7 +1,7 @@
-"""Member 5 Lab 07 D.4 UI scenario tests.
+"""Member 5 Lab 07 Part E regression tests for Streamlit UI states.
 
-These tests exercise the Streamlit page with a deterministic mocked API client.
-HTTP contract behavior is covered separately by Member 1's API-client tests.
+The tests isolate the Streamlit page with a deterministic AssistantClient.
+HTTP contract and feedback-submission behavior are covered by M1 and M3.
 """
 
 from pathlib import Path
@@ -27,19 +27,17 @@ def ui_app(monkeypatch):
             request_id="m5-request-1",
         )
     )
-    feedback = Mock(return_value=True)
 
     monkeypatch.setattr(AssistantClient, "healthy", healthy)
     monkeypatch.setattr(AssistantClient, "ask", ask)
-    monkeypatch.setattr(AssistantClient, "send_feedback", feedback)
 
     app = AppTest.from_file(str(APP_PATH)).run()
     assert not app.exception
-    return app, ask, healthy, feedback
+    return app, ask, healthy
 
 
 def test_sidebar_example_submits_selected_question(ui_app):
-    app, ask, _, _ = ui_app
+    app, ask, _ = ui_app
 
     example = "Can I register my thesis with 118 credits?"
     app.button[0].click().run()
@@ -49,8 +47,8 @@ def test_sidebar_example_submits_selected_question(ui_app):
     assert any(message.value == example for message in app.markdown)
 
 
-def test_thesis_answer_renders_sources(ui_app):
-    app, ask, _, _ = ui_app
+def test_thesis_answer_renders_answer_and_multiple_sources(ui_app):
+    app, ask, _ = ui_app
     ask.return_value = ChatResult(
         ok=True,
         answer="You may register your thesis after meeting the credit requirement.",
@@ -71,7 +69,7 @@ def test_thesis_answer_renders_sources(ui_app):
 
 
 def test_out_of_domain_answer_shows_escalation_note(ui_app):
-    app, ask, _, _ = ui_app
+    app, ask, _ = ui_app
     ask.return_value = ChatResult(
         ok=True,
         answer="I cannot answer that question from the handbook.",
@@ -82,34 +80,28 @@ def test_out_of_domain_answer_shows_escalation_note(ui_app):
     app.chat_input[0].set_value("Recommend a career based on my personality").run()
 
     assert not app.exception
-    assert any(
-        "Training Office, room I.101" in item.value for item in app.info
-    )
+    assert any("Training Office, room I.101" in item.value for item in app.info)
 
 
-def test_blank_question_shows_validation_without_api_call(ui_app):
-    app, ask, _, _ = ui_app
+@pytest.mark.parametrize(
+    ("question", "expected_warning"),
+    [
+        ("   ", "Please type a question."),
+        ("x" * 2001, "Your question is too long"),
+    ],
+)
+def test_invalid_question_is_rejected_before_api_call(ui_app, question, expected_warning):
+    app, ask, _ = ui_app
 
-    app.chat_input[0].set_value("   ").run()
+    app.chat_input[0].set_value(question).run()
 
     assert not app.exception
     ask.assert_not_called()
-    assert any("Please type a question." in item.value for item in app.warning)
-
-
-def test_feedback_buttons_submit_positive_and_negative_ratings(ui_app):
-    app, ask, _, feedback = ui_app
-
-    app.chat_input[0].set_value("Where is the library?").run()
-    assert not app.exception
-
-    app.button(key="up1").click().run()
-    assert not app.exception
-    feedback.assert_called_once_with("m5-request-1", 1)
+    assert any(expected_warning in item.value for item in app.warning)
 
 
 def test_backend_stopped_shows_health_and_chat_errors(ui_app):
-    app, ask, healthy, _ = ui_app
+    app, ask, healthy = ui_app
     healthy.return_value = False
     ask.return_value = ChatResult(
         ok=False,
@@ -123,9 +115,20 @@ def test_backend_stopped_shows_health_and_chat_errors(ui_app):
     app.chat_input[0].set_value("Where is the library?").run()
 
     assert not app.exception
-    assert any(
-        "Cannot reach the assistant" in item.value for item in app.markdown
+    assert any("Cannot reach the assistant" in item.value for item in app.markdown)
+
+
+def test_rate_limit_error_is_displayed_without_traceback(ui_app):
+    app, ask, _ = ui_app
+    ask.return_value = ChatResult(
+        ok=False,
+        error="Too many questions in a short time. Please wait a minute.",
     )
+
+    app.chat_input[0].set_value("Where is the library?").run()
+
+    assert not app.exception
+    assert any("Please wait a minute" in item.value for item in app.markdown)
 
 
 @pytest.mark.parametrize(
@@ -152,8 +155,8 @@ def test_backend_stopped_shows_health_and_chat_errors(ui_app):
         ),
     ],
 )
-def test_special_response_states_render_friendly_notes(ui_app, result, expected_note):
-    app, ask, _, _ = ui_app
+def test_degraded_and_escalated_response_states_render_notes(ui_app, result, expected_note):
+    app, ask, _ = ui_app
     ask.return_value = result
 
     app.chat_input[0].set_value("Please help with this question").run()
