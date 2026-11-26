@@ -34,6 +34,15 @@ The focused suite covers each API route, session/request-ID propagation, standar
 
 Two tests call the **actual FastAPI app** in-process via FastAPI TestClient and bridge all requests through the same HTTP request/response contract: real SQLite persistence, feedback -1, unknown request ID 404, validation 422, rate limit 429, distinct request IDs and hashed session ID. Those tests do not bind real ports, so they are not a substitute for a two-server manual browser demonstration.
 
+## Automated real-port smoke (CI)
+
+The new dedicated GitHub Actions workflow also starts **both actual local processes** on the CI runner: FastAPI (port 8000) and Streamlit (port 8501). It waits until both HTTP health endpoints return success, retrieves the Streamlit HTML page, calls the live FastAPI through this M1 AssistantClient, checks `request_id` and session propagation, posts -1 feedback, verifies the saved feedback via authenticated admin GET, rejects an unknown feedback ID, and checks HTTP 422. All requests use synthetic data and a disposable SQLite file; processes are killed at the end of the job.
+
+[First verified two-server smoke success, CI #45762782196](https://github.com/vinhdu1233-tech/assistant-core-team05/actions/runs/45762782196): **63 M1 tests passed**, Ruff lint PASS, Ruff format PASS, and the live-port smoke PASS. A successful health request to Streamlit proves its server launched, **not** that a human clicked through every browser interaction. M3/M5 must still finish visual/UX and end-to-end browser acceptance checks after L1/L2 and F1 feedback UI wiring are complete.
+
+## H2 reflection
+`docs/lab07/m1-h2-reflection.md` provides the requested **two sentences** (one idea applied; one proposed improvement), marked as an AI-assisted draft for the M1 member to review after reading the assigned Google PAIR pages.
+
 ## Two-server smoke instructions (requires someone running on a computer)
 
 With dependencies installed from `requirements.txt` and `pip install -e .`, from the repository root:
