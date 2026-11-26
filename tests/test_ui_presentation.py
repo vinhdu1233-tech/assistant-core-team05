@@ -1,6 +1,12 @@
 from ui.presentation import clarify_thesis_eligibility
 
 
+def test_two_credit_counts_do_not_infer_a_shortfall():
+    question = "I took 18 credits this semester and have 118 credits in total. Can I register my thesis?"
+    answer = "You need at least 120 accumulated credits."
+    assert clarify_thesis_eligibility(question, answer) == answer
+
+
 def test_thesis_answer_explains_missing_credits():
     question = "Can I register my thesis with 118 credits?"
     answer = (

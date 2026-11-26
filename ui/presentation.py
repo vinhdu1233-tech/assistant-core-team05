@@ -13,9 +13,9 @@ def clarify_thesis_eligibility(question: str, answer: str) -> str:
     if not is_thesis_question:
         return answer
 
-    student_match = re.search(
-        r"\b(\d{1,3})\s+credits?\b",
-        question_lower,
+    student_match = re.fullmatch(
+        r"can i register (?:my |a )?thesis with (\d{1,3}) (?:accumulated )?credits?\s*\??",
+        question_lower.strip(),
     )
     minimum_match = re.search(
         r"at least\s+(\d{1,3})\s+accumulated credits",

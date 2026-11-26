@@ -1,0 +1,90 @@
+name: Lab 07 M1 API client
+
+on:
+  push:
+    paths:
+      - "ui/api_client.py"
+      - "tests/test_lab07_api_client_m1.py"
+      - "docs/lab07/m1-api-client.md"
+      - "docs/lab07/m1-h2-reflection.md"
+      - ".github/workflows/lab07-m1-api-client.yml"
+  pull_request:
+    paths:
+      - "ui/api_client.py"
+      - "tests/test_lab07_api_client_m1.py"
+      - "docs/lab07/m1-api-client.md"
+      - "docs/lab07/m1-h2-reflection.md"
+      - ".github/workflows/lab07-m1-api-client.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  m1-http-client:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install dependencies
+        run: |
+          python -m pip install -r requirements.txt
+          python -m pip install -e .
+      - name: Verify real FastAPI contract and M1 regression tests
+        run: python -m pytest -q tests/test_lab07_api_client_m1.py
+      - name: Lint M1-owned code
+        run: python -m ruff check ui/api_client.py tests/test_lab07_api_client_m1.py
+      - name: Check formatting for M1-owned code
+        run: python -m ruff format --check ui/api_client.py tests/test_lab07_api_client_m1.py
+      - name: Boot Streamlit and FastAPI on actual localhost ports
+        env:
+          PYTHONPATH: src
+          DATABASE_URL: sqlite:///lab07-m1-ci-smoke.sqlite
+          SESSION_SALT: lab07-synthetic-ci-salt
+          API_ADMIN_KEY: lab07-synthetic-ci-admin
+          LLM_PROVIDER: stub
+          STREAMLIT_BROWSER_GATHER_USAGE_STATS: "false"
+        run: |
+          python -m uvicorn assistant_api.main:create_app --factory --host 127.0.0.1 --port 8000 > /tmp/lab07-m1-api.log 2>&1 &
+          API_PID=$!
+          python -m streamlit run ui/app.py --server.headless true --server.address 127.0.0.1 --server.port 8501 > /tmp/lab07-m1-ui.log 2>&1 &
+          UI_PID=$!
+          trap 'kill "$API_PID" "$UI_PID" 2>/dev/null || true' EXIT
+          python - <<'PY'
+          import time
+          import httpx
+          from ui.api_client import AssistantClient
+
+          for _ in range(45):
+              try:
+                  api = httpx.get("http://127.0.0.1:8000/health", timeout=1)
+                  ui = httpx.get("http://127.0.0.1:8501/_stcore/health", timeout=1)
+                  if api.status_code == ui.status_code == 200 and api.json().get("status") == "ok":
+                      break
+              except (httpx.HTTPError, ValueError):
+                  pass
+              time.sleep(0.4)
+          else:
+              raise AssertionError("FastAPI / Streamlit failed to start on localhost")
+
+          assert httpx.get("http://127.0.0.1:8501", timeout=3).status_code == 200
+          with AssistantClient("http://127.0.0.1:8000") as client:
+              assert client.healthy()
+              answer = client.ask("tuition for 18 credits and 2 retake", "lab07-m1-live-tab")
+              assert answer.ok and answer.request_id
+              assert "9,450,000" in answer.answer
+              assert client.send_feedback(answer.request_id, -1, "live smoke test")
+              assert not client.send_feedback("unknown-request-id", 1)
+              invalid = client.ask("", "lab07-m1-live-tab")
+              assert not invalid.ok and "type a question" in invalid.error
+
+          stored = httpx.get(
+              "http://127.0.0.1:8000/v1/feedback",
+              headers={"X-API-Key": "lab07-synthetic-ci-admin"},
+              timeout=3,
+          )
+          assert stored.status_code == 200
+          assert any(item["request_id"] == answer.request_id and item["rating"] == -1 for item in stored.json())
+          print("Live localhost smoke passed: UI 8501, API 8000, chat, feedback, validation, persistence.")
+          PY

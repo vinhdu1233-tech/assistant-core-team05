@@ -2,6 +2,7 @@
 
 The UI never imports assistant_core: it only talks to the backend through the HTTP API.
 """
+
 import os
 import sys
 import uuid
@@ -9,7 +10,7 @@ from pathlib import Path
 
 import streamlit as st
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[1]))   # so "import ui..." works under streamlit
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))  # so "import ui..." works under streamlit
 
 from ui.api_client import AssistantClient
 from ui.logic import EXAMPLES, WELCOME, format_sources, status_note, validate_input
@@ -25,8 +26,11 @@ if "messages" not in st.session_state:
     st.session_state.messages = [{"role": "assistant", "content": WELCOME}]
 if "rated" not in st.session_state:
     st.session_state.rated = set()
-
+if "feedback_messages" not in st.session_state:
+    st.session_state.feedback_messages = {}
 st.title("🎓 FIT Study Assistant")
+if feedback_notice := st.session_state.pop("feedback_notice", None):
+    st.toast(feedback_notice)
 if not client.healthy():
     st.error("The assistant backend is not reachable. Start it with: uvicorn assistant_api.main:create_app --factory")
 
@@ -46,16 +50,30 @@ for i, m in enumerate(st.session_state.messages):
         if m.get("note"):
             st.info(m["note"])
         rid = m.get("request_id")
-        if rid and rid not in st.session_state.rated:
+
+        if rid and rid in st.session_state.rated:
+            st.success(st.session_state.feedback_messages.get(rid, "Thanks for your feedback!"))
+
+        elif rid:
             c1, c2, _ = st.columns([1, 1, 6])
+
             if c1.button("👍", key=f"up{i}"):
-                client.send_feedback(rid, 1)
-                st.session_state.rated.add(rid)
-                st.toast("Thanks for your feedback!")
+                if client.send_feedback(rid, 1):
+                    st.session_state.rated.add(rid)
+                    st.session_state.feedback_messages[rid] = "Thanks for your feedback!"
+                    st.session_state.feedback_notice = st.session_state.feedback_messages[rid]
+                    st.rerun()
+                else:
+                    st.warning("Could not save your feedback. Please try again.")
+
             if c2.button("👎", key=f"down{i}"):
-                client.send_feedback(rid, -1)
-                st.session_state.rated.add(rid)
-                st.toast("Thanks — we will look at this answer.")
+                if client.send_feedback(rid, -1):
+                    st.session_state.rated.add(rid)
+                    st.session_state.feedback_messages[rid] = "Thanks — we will look at this answer."
+                    st.session_state.feedback_notice = st.session_state.feedback_messages[rid]
+                    st.rerun()
+                else:
+                    st.warning("Could not save your feedback. Please try again.")
 
 # ---- new question ----------------------------------------------------------------
 question = st.chat_input("Ask about fees, offices or the handbook…") or st.session_state.pop("pending", None)
@@ -68,10 +86,13 @@ if question:
         with st.spinner("Thinking…"):
             result = client.ask(question, st.session_state.session_id)
         if result.ok:
+            answer_text = result.answer
+            if not result.escalate and any(source["id"] == "H26#5.3" for source in result.sources):
+                answer_text = clarify_thesis_eligibility(question, result.answer)
             st.session_state.messages.append(
                 {
                     "role": "assistant",
-                    "content": clarify_thesis_eligibility(question, result.answer),
+                    "content": answer_text,
                     "sources": format_sources(result.sources),
                     "note": status_note(result),
                     "request_id": result.request_id,
